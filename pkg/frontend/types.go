@@ -240,6 +240,9 @@ func (prepareStmt *PrepareStmt) Close() {
 	if prepareStmt.PrepareStmt != nil {
 		prepareStmt.PrepareStmt.Free()
 	}
+	if prepareStmt.ParamTypes != nil {
+		prepareStmt.PrepareStmt = nil
+	}
 }
 
 var _ buf.Allocator = &SessionAllocator{}
