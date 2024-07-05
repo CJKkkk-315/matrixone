@@ -175,7 +175,6 @@ type Session struct {
 	payloadCounter int64
 
 	createdTime time.Time
-
 	expiredTime time.Time
 
 	planCache *planCache

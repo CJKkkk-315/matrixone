@@ -435,7 +435,7 @@ func (c *Conn) Flush() error {
 			return err
 		}
 	}
-	c.ses.CountPacket(int64(c.packetInBuf))
+	c.ses.CountPacket(1)
 	c.packetInBuf = 0
 	return err
 }

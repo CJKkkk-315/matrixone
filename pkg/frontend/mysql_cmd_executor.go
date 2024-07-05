@@ -219,7 +219,6 @@ var RecordStatement = func(ctx context.Context, ses *Session, proc *process.Proc
 	stm.User = tenant.GetUser()
 	stm.Host = ses.respr.GetStr(PEER)
 	stm.Database = ses.respr.GetStr(DBNAME)
-	stm.Statement = text
 	stm.StatementFingerprint = "" // fixme= (Reserved)
 	stm.StatementTag = ""         // fixme= (Reserved)
 	stm.SqlSourceType = sqlType
@@ -231,9 +230,12 @@ var RecordStatement = func(ctx context.Context, ses *Session, proc *process.Proc
 		// fix original issue #8165
 		stm.User = ""
 	}
-	if stm.IsMoLogger() && stm.StatementType == "Load" && len(stm.Statement) > 128 {
+	if stm.IsMoLogger() && stm.StatementType == "Load" && len(text) > 128 {
 		stm.Statement = envStmt[:40] + "..." + envStmt[len(envStmt)-70:]
+	} else {
+		stm.Statement = strings.Clone(text)
 	}
+
 	stm.Report(ctx) // pls keep it simple: Only call Report twice at most.
 	ses.SetTStmt(stm)
 
@@ -627,6 +629,9 @@ func doSetVar(ses *Session, execCtx *ExecCtx, sv *tree.SetVar, sql string) error
 
 	for _, assign := range sv.Assignments {
 		name := assign.Name
+		//newName := make([]byte, len(assign.Name))
+		//copy(newName, assign.Name)
+		//name := string(newName)
 		var value interface{}
 
 		value, err = getExprValue(assign.Value, ses, execCtx)

@@ -376,7 +376,6 @@ func NewMOServer(
 	setGlobalPu(pu)
 	setGlobalAicm(aicm)
 	setGlobalSessionAlloc(NewSessionAllocator(pu))
-	setGlobalBufferAlloc(NewBufferAllocator(pu))
 	rm, err := NewRoutineManager(ctx)
 	if err != nil {
 		logutil.Panicf("start server failed with %+v", err)
@@ -406,14 +405,11 @@ func NewMOServer(
 	}
 
 	listenerUnix, err := net.Listen("unix", unixAddr)
+	if err != nil {
+		logutil.Panicf("start server failed with %+v", err)
+	}
 	mo.listeners = append(mo.listeners, listenerTcp, listenerUnix)
 
-	if err != nil {
-		logutil.Panicf("start server failed with %+v", err)
-	}
-	if err != nil {
-		logutil.Panicf("start server failed with %+v", err)
-	}
 	return mo
 }
 
