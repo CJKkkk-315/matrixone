@@ -492,16 +492,16 @@ func (s *Scanner) scanLiteralIdentifier() (int, string) {
 					return LEX_ERROR, ""
 				}
 				s.inc()
-				return QUOTE_ID, stingCopy(s.buf[start : s.Pos-1])
+				return QUOTE_ID, strings.Clone(s.buf[start : s.Pos-1])
 			}
 
 			var buf strings.Builder
-			buf.WriteString(stingCopy(s.buf[start:s.Pos]))
+			buf.WriteString(s.buf[start:s.Pos])
 			s.inc()
 			return s.scanLiteralIdentifierSlow(&buf)
 		case eofChar:
 			// Premature EOF.
-			return LEX_ERROR, stingCopy(s.buf[start:s.Pos])
+			return LEX_ERROR, strings.Clone(s.buf[start:s.Pos])
 		default:
 			s.inc()
 		}
@@ -555,11 +555,11 @@ func (s *Scanner) scanCommentTypeBlock() (int, string) {
 			continue
 		}
 		if s.cur() == eofChar {
-			return LEX_ERROR, stingCopy(s.buf[start:s.Pos])
+			return LEX_ERROR, strings.Clone(s.buf[start:s.Pos])
 		}
 		s.inc()
 	}
-	return COMMENT, stingCopy(s.buf[start:s.Pos])
+	return COMMENT, strings.Clone(s.buf[start:s.Pos])
 }
 
 // scanMySQLSpecificComment scans a MySQL comment pragma, which always starts with '//*`
@@ -621,7 +621,7 @@ func (s *Scanner) scanCommentTypeLine(prefixLen int) (int, string) {
 		}
 		s.inc()
 	}
-	return COMMENT, stingCopy(s.buf[start:s.Pos])
+	return COMMENT, strings.Clone(s.buf[start:s.Pos])
 }
 
 // ?
@@ -636,7 +636,7 @@ func (s *Scanner) scanBindVar() (int, string) {
 		s.inc()
 	}
 	if !isLetter(s.cur()) {
-		return LEX_ERROR, stingCopy(s.buf[start:s.Pos])
+		return LEX_ERROR, strings.Clone(s.buf[start:s.Pos])
 	}
 	for {
 		ch := s.cur()
@@ -645,7 +645,7 @@ func (s *Scanner) scanBindVar() (int, string) {
 		}
 		s.inc()
 	}
-	return token, stingCopy(s.buf[start:s.Pos])
+	return token, strings.Clone(s.buf[start:s.Pos])
 }
 
 // scanNumber scans any SQL numeric literal, either floating point or integer
@@ -672,7 +672,7 @@ func (s *Scanner) scanNumber() (int, string) {
 			if p1 == p2 || isDigit(s.cur()) {
 				token = ID
 				s.scanIdentifier(false)
-				return token, strings.ToLower(stingCopy(s.buf[start:s.Pos]))
+				return token, strings.ToLower(strings.Clone(s.buf[start:s.Pos]))
 			}
 
 			goto exit
@@ -685,7 +685,7 @@ func (s *Scanner) scanNumber() (int, string) {
 			if p1 == p2 || isDigit(s.cur()) {
 				token = ID
 				s.scanIdentifier(false)
-				return token, strings.ToLower(stingCopy(s.buf[start:s.Pos]))
+				return token, strings.ToLower(strings.Clone(s.buf[start:s.Pos]))
 			}
 
 			goto exit
@@ -721,7 +721,7 @@ exit:
 		s.scanIdentifier(false)
 	}
 
-	return token, strings.ToLower(stingCopy(s.buf[start:s.Pos]))
+	return token, strings.ToLower(strings.Clone(s.buf[start:s.Pos]))
 }
 
 func (s *Scanner) scanIdentifier(isVariable bool) (int, string) {
@@ -746,7 +746,7 @@ func (s *Scanner) scanIdentifier(isVariable bool) (int, string) {
 
 		s.inc()
 	}
-	keywordName := stingCopy(s.buf[start:s.Pos])
+	keywordName := strings.Clone(s.buf[start:s.Pos])
 	lower := strings.ToLower(keywordName)
 	if keywordID, found := keywords[lower]; found {
 		// make transaction statements coexist with plsql
@@ -878,8 +878,4 @@ func digitVal(ch uint16) int {
 
 func isDigit(ch uint16) bool {
 	return '0' <= ch && ch <= '9'
-}
-
-func stingCopy(s string) string {
-	return strings.Clone(s)
 }
