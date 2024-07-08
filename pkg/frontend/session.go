@@ -1387,7 +1387,7 @@ func (ses *Session) StatusSession() *status.Session {
 		DB:            ses.GetDatabaseName(),
 		SessionStart:  ses.GetSessionStart(),
 		Command:       ses.GetCmd().String(),
-		Info:          ses.GetSqlOfStmt(),
+		Info:          strings.Clone(ses.GetSqlOfStmt()),
 		TxnID:         uuid2Str(ses.GetTxnId()),
 		StatementID:   ses.GetStmtId().String(),
 		StatementType: ses.GetStmtType(),
