@@ -165,6 +165,7 @@ var RecordStatement = func(ctx context.Context, ses *Session, proc *process.Proc
 		stmID, _ = uuid.NewV7()
 		text = SubStringFromBegin(envStmt, int(getGlobalPu().SV.LengthOfQueryPrinted))
 	}
+	text = strings.Clone(text)
 	ses.SetStmtId(stmID)
 	ses.SetStmtType(getStatementType(statement).GetStatementType())
 	ses.SetQueryType(getStatementType(statement).GetQueryType())

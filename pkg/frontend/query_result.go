@@ -197,7 +197,7 @@ func saveMeta(ctx context.Context, ses *Session) error {
 	}
 	m := &catalog.Meta{
 		QueryId:       ses.GetStmtId(),
-		Statement:     ses.GetSql(),
+		Statement:     strings.Clone(ses.GetSql()),
 		AccountId:     ses.GetTenantInfo().GetTenantID(),
 		RoleId:        ses.proc.SessionInfo.RoleId,
 		ResultPath:    buf.String(),
