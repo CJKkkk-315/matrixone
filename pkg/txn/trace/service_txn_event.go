@@ -105,7 +105,7 @@ func (s *service) TxnExecSQL(
 
 	sql = truncateSQL(sql)
 	s.txnC <- event{
-		csv: newTxnInfoEvent(op.Txn(), txnExecuteEvent, sql),
+		csv: newTxnInfoEvent(op.Txn(), txnExecuteEvent, strings.Clone(sql)),
 	}
 }
 
