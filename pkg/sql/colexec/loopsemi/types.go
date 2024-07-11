@@ -26,7 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(LoopSemi)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -47,7 +47,7 @@ type container struct {
 	cfs     []func(*vector.Vector, *vector.Vector, int64, int) error
 }
 
-type LoopSemi struct {
+type Argument struct {
 	ctr    *container
 	Result []int32
 	Cond   *plan.Expr
@@ -55,43 +55,43 @@ type LoopSemi struct {
 	vm.OperatorBase
 }
 
-func (loopSemi *LoopSemi) GetOperatorBase() *vm.OperatorBase {
-	return &loopSemi.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[LoopSemi](
-		func() *LoopSemi {
-			return &LoopSemi{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *LoopSemi) {
-			*a = LoopSemi{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[LoopSemi]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (loopSemi LoopSemi) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *LoopSemi {
-	return reuse.Alloc[LoopSemi](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (loopSemi *LoopSemi) Release() {
-	if loopSemi != nil {
-		reuse.Free[LoopSemi](loopSemi, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (loopSemi *LoopSemi) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	loopSemi.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (loopSemi *LoopSemi) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if ctr := loopSemi.ctr; ctr != nil {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if ctr := arg.ctr; ctr != nil {
 		ctr.cleanBatch(proc.Mp())
 		ctr.cleanExprExecutor()
 		ctr.FreeAllReg()
@@ -99,8 +99,8 @@ func (loopSemi *LoopSemi) Free(proc *process.Process, pipelineFailed bool, err e
 		//proc.PutBatch(arg.ctr.buf)
 		//arg.ctr.buf = nil
 		//}
-		loopSemi.ctr.lastrow = 0
-		loopSemi.ctr = nil
+		arg.ctr.lastrow = 0
+		arg.ctr = nil
 	}
 }
 

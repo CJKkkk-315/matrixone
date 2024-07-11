@@ -86,15 +86,16 @@ func (o *customConfigProvider) GetConfig(tbl *catalog.TableEntry) *BasicPolicyCo
 			if cnSize == 0 {
 				cnSize = common.DefaultMinCNMergeSize * common.Const1MBytes
 			}
-			// compatible codes: remap old rows -> default bytes size
+			// if the values are smaller than default, it map old rows -> bytes size
 			minOsize := extra.MinOsizeQuailifed
-			if minOsize < 80*8192 {
-				minOsize = common.DefaultMinOsizeQualifiedMB * common.Const1MBytes
+			if v := uint32(80 * 8192); minOsize < v {
+				minOsize = v
 			}
 			maxOsize := extra.MaxOsizeMergedObj
-			if maxOsize < 500*8192 {
-				maxOsize = common.DefaultMaxOsizeObjMB * common.Const1MBytes
+			if v := uint32(500 * 8192); maxOsize < v {
+				maxOsize = v
 			}
+
 			p = &BasicPolicyConfig{
 				ObjectMinOsize:    minOsize,
 				MergeMaxOneRun:    int(extra.MaxObjOnerun),
@@ -235,11 +236,17 @@ func (o *basic) GetConfig(tbl *catalog.TableEntry) any {
 	return r
 }
 
-func (o *basic) Revise(cpu, mem int64) ([]*catalog.ObjectEntry, TaskHostKind) {
+func (o *basic) Revise(cpu, mem int64, littleFirst bool) ([]*catalog.ObjectEntry, TaskHostKind) {
 	objs := o.objHeap.finish()
-	slices.SortFunc(objs, func(a, b *catalog.ObjectEntry) int {
-		return cmp.Compare(a.GetRemainingRows(), b.GetRemainingRows())
-	})
+	if littleFirst {
+		slices.SortFunc(objs, func(a, b *catalog.ObjectEntry) int {
+			return cmp.Compare(a.GetRemainingRows(), b.GetRemainingRows())
+		})
+	} else {
+		slices.SortFunc(objs, func(a, b *catalog.ObjectEntry) int {
+			return -cmp.Compare(a.GetRemainingRows(), b.GetRemainingRows())
+		})
+	}
 
 	isStandalone := common.IsStandaloneBoost.Load()
 	mergeOnDNIfStandalone := !common.ShouldStandaloneCNTakeOver.Load()

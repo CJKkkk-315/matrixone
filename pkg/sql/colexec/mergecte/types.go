@@ -23,7 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeCTE)
+var _ vm.Operator = new(Argument)
 
 const (
 	sendInitial   = 0
@@ -39,55 +39,55 @@ type container struct {
 	status     int32
 }
 
-type MergeCTE struct {
+type Argument struct {
 	ctr *container
 
 	vm.OperatorBase
 }
 
-func (mergeCte *MergeCTE) GetOperatorBase() *vm.OperatorBase {
-	return &mergeCte.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeCTE](
-		func() *MergeCTE {
-			return &MergeCTE{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeCTE) {
-			*a = MergeCTE{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeCTE]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeCte MergeCTE) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeCTE {
-	return reuse.Alloc[MergeCTE](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeCte *MergeCTE) Release() {
-	if mergeCte != nil {
-		reuse.Free[MergeCTE](mergeCte, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeCte *MergeCTE) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeCte.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeCte *MergeCTE) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if mergeCte.ctr != nil {
-		mergeCte.ctr.FreeMergeTypeOperator(pipelineFailed)
-		if mergeCte.ctr.buf != nil {
-			mergeCte.ctr.buf.Clean(proc.Mp())
-			mergeCte.ctr.buf = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		arg.ctr.FreeMergeTypeOperator(pipelineFailed)
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		mergeCte.ctr = nil
+		arg.ctr = nil
 	}
 
 }

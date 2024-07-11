@@ -25,12 +25,12 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "projection"
+const argName = "projection"
 
-func (projection *Projection) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": projection(")
-	for i, e := range projection.Es {
+	for i, e := range arg.Es {
 		if i > 0 {
 			buf.WriteString(",")
 		}
@@ -39,29 +39,29 @@ func (projection *Projection) String(buf *bytes.Buffer) {
 	buf.WriteString(")")
 }
 
-func (projection *Projection) Prepare(proc *process.Process) (err error) {
-	projection.ctr = new(container)
-	projection.ctr.projExecutors, err = colexec.NewExpressionExecutorsFromPlanExpressions(proc, projection.Es)
-	projection.ctr.uafs = make([]func(v *vector.Vector, w *vector.Vector) error, len(projection.Es))
-	for i, e := range projection.Es {
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	arg.ctr = new(container)
+	arg.ctr.projExecutors, err = colexec.NewExpressionExecutorsFromPlanExpressions(proc, arg.Es)
+	arg.ctr.uafs = make([]func(v *vector.Vector, w *vector.Vector) error, len(arg.Es))
+	for i, e := range arg.Es {
 		if e.Typ.Id != 0 {
-			projection.ctr.uafs[i] = vector.GetUnionAllFunction(plan.MakeTypeByPlan2Expr(e), proc.Mp())
+			arg.ctr.uafs[i] = vector.GetUnionAllFunction(plan.MakeTypeByPlan2Expr(e), proc.Mp())
 		}
 	}
 	return err
 }
 
-func (projection *Projection) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	result, err := projection.GetChildren(0).Call(proc)
+	result, err := arg.GetChildren(0).Call(proc)
 	if err != nil {
 		return result, err
 	}
 
-	anal := proc.GetAnalyze(projection.GetIdx(), projection.GetParallelIdx(), projection.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 
@@ -69,21 +69,21 @@ func (projection *Projection) Call(proc *process.Process) (vm.CallResult, error)
 		return result, nil
 	}
 	bat := result.Batch
-	anal.Input(bat, projection.GetIsFirst())
+	anal.Input(bat, arg.GetIsFirst())
 
-	if projection.ctr.buf != nil {
-		proc.PutBatch(projection.ctr.buf)
-		projection.ctr.buf = nil
+	if arg.ctr.buf != nil {
+		proc.PutBatch(arg.ctr.buf)
+		arg.ctr.buf = nil
 	}
 
-	projection.ctr.buf = batch.NewWithSize(len(projection.Es))
+	arg.ctr.buf = batch.NewWithSize(len(arg.Es))
 	// keep shuffleIDX unchanged
-	projection.ctr.buf.ShuffleIDX = bat.ShuffleIDX
+	arg.ctr.buf.ShuffleIDX = bat.ShuffleIDX
 	// do projection.
-	for i := range projection.ctr.projExecutors {
-		vec, err := projection.ctr.projExecutors[i].Eval(proc, []*batch.Batch{bat}, nil)
+	for i := range arg.ctr.projExecutors {
+		vec, err := arg.ctr.projExecutors[i].Eval(proc, []*batch.Batch{bat}, nil)
 		if err != nil {
-			for _, newV := range projection.ctr.buf.Vecs {
+			for _, newV := range arg.ctr.buf.Vecs {
 				if newV != nil {
 					for k, oldV := range bat.Vecs {
 						if oldV != nil && newV == oldV {
@@ -92,20 +92,20 @@ func (projection *Projection) Call(proc *process.Process) (vm.CallResult, error)
 					}
 				}
 			}
-			projection.ctr.buf = nil
+			arg.ctr.buf = nil
 			return result, err
 		}
-		projection.ctr.buf.Vecs[i] = vec
+		arg.ctr.buf.Vecs[i] = vec
 	}
 
-	newAlloc, err := colexec.FixProjectionResult(proc, projection.ctr.projExecutors, projection.ctr.uafs, projection.ctr.buf, bat)
+	newAlloc, err := colexec.FixProjectionResult(proc, arg.ctr.projExecutors, arg.ctr.uafs, arg.ctr.buf, bat)
 	if err != nil {
 		return result, err
 	}
-	projection.maxAllocSize = max(projection.maxAllocSize, newAlloc)
-	projection.ctr.buf.SetRowCount(bat.RowCount())
+	arg.maxAllocSize = max(arg.maxAllocSize, newAlloc)
+	arg.ctr.buf.SetRowCount(bat.RowCount())
 
-	anal.Output(projection.ctr.buf, projection.GetIsLast())
-	result.Batch = projection.ctr.buf
+	anal.Output(arg.ctr.buf, arg.GetIsLast())
+	result.Batch = arg.ctr.buf
 	return result, nil
 }

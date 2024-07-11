@@ -34,26 +34,26 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-func processlistPrepare(proc *process.Process, tableFunction *TableFunction) error {
-	tableFunction.ctr.state = dataProducing
-	if len(tableFunction.Args) > 0 {
+func processlistPrepare(proc *process.Process, arg *Argument) error {
+	arg.ctr.state = dataProducing
+	if len(arg.Args) > 0 {
 		return moerr.NewInvalidInput(proc.Ctx, "processlist: no argument is required")
 	}
-	for i := range tableFunction.Attrs {
-		tableFunction.Attrs[i] = strings.ToUpper(tableFunction.Attrs[i])
+	for i := range arg.Attrs {
+		arg.Attrs[i] = strings.ToUpper(arg.Attrs[i])
 	}
 	return nil
 }
 
-func processlist(_ int, proc *process.Process, tableFunction *TableFunction, result *vm.CallResult) (bool, error) {
-	switch tableFunction.ctr.state {
+func processlist(_ int, proc *process.Process, arg *Argument, result *vm.CallResult) (bool, error) {
+	switch arg.ctr.state {
 	case dataProducing:
 		sessions, err := fetchSessions(proc.Ctx, proc.GetSessionInfo().Account, proc.Base.QueryClient)
 		if err != nil {
 			return false, err
 		}
-		bat := batch.NewWithSize(len(tableFunction.Attrs))
-		for i, a := range tableFunction.Attrs {
+		bat := batch.NewWithSize(len(arg.Attrs))
+		for i, a := range arg.Attrs {
 			idx, ok := status.SessionField_value[a]
 			if !ok {
 				return false, moerr.NewInternalError(proc.Ctx, "bad input select columns name %v", a)
@@ -62,11 +62,11 @@ func processlist(_ int, proc *process.Process, tableFunction *TableFunction, res
 			tp := plan2.SessionsColTypes[idx]
 			bat.Vecs[i] = proc.GetVector(tp)
 		}
-		bat.Attrs = tableFunction.Attrs
+		bat.Attrs = arg.Attrs
 
 		mp := proc.GetMPool()
 		for _, session := range sessions {
-			for i, col := range tableFunction.Attrs {
+			for i, col := range arg.Attrs {
 				switch status.SessionField(status.SessionField_value[col]) {
 				case status.SessionField_NODE_ID:
 					if err := vector.AppendBytes(bat.Vecs[i], []byte(session.NodeID), false, mp); err != nil {
@@ -156,14 +156,14 @@ func processlist(_ int, proc *process.Process, tableFunction *TableFunction, res
 		}
 		bat.SetRowCount(bat.Vecs[0].Length())
 		result.Batch = bat
-		tableFunction.ctr.state = dataFinished
+		arg.ctr.state = dataFinished
 		return false, nil
 
 	case dataFinished:
 		result.Batch = nil
 		return true, nil
 	default:
-		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", tableFunction.ctr.state)
+		return false, moerr.NewInternalError(proc.Ctx, "unknown state %v", arg.ctr.state)
 	}
 }
 

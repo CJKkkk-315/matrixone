@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(HashBuild)
+var _ vm.Operator = new(Argument)
 
 const (
 	BuildHashMap = iota
@@ -57,7 +57,7 @@ type container struct {
 	uniqueJoinKeys []*vector.Vector
 }
 
-type HashBuild struct {
+type Argument struct {
 	ctr *container
 	// need to generate a push-down filter expression
 	NeedExpr         bool
@@ -73,51 +73,51 @@ type HashBuild struct {
 	vm.OperatorBase
 }
 
-func (hashBuild *HashBuild) GetOperatorBase() *vm.OperatorBase {
-	return &hashBuild.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[HashBuild](
-		func() *HashBuild {
-			return &HashBuild{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *HashBuild) {
-			*a = HashBuild{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[HashBuild]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (hashBuild HashBuild) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *HashBuild {
-	return reuse.Alloc[HashBuild](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (hashBuild *HashBuild) Release() {
-	if hashBuild != nil {
-		reuse.Free[HashBuild](hashBuild, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (hashBuild *HashBuild) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	hashBuild.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (hashBuild *HashBuild) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := hashBuild.ctr
-	proc.FinalizeRuntimeFilter(hashBuild.RuntimeFilterSpec)
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
+	proc.FinalizeRuntimeFilter(arg.RuntimeFilterSpec)
 	if ctr != nil {
 		ctr.cleanBatches(proc)
 		ctr.cleanEvalVectors()
-		if !hashBuild.NeedHashMap {
+		if !arg.NeedHashMap {
 			ctr.cleanHashMap()
 		}
-		hashBuild.ctr = nil
+		arg.ctr = nil
 	}
 }
 

@@ -21,31 +21,31 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "merge_recursive"
+const argName = "merge_recursive"
 
-func (mergeRecursive *MergeRecursive) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": merge recursive ")
 }
 
-func (mergeRecursive *MergeRecursive) Prepare(proc *process.Process) error {
-	mergeRecursive.ctr = new(container)
-	mergeRecursive.ctr.InitReceiver(proc, true)
+func (arg *Argument) Prepare(proc *process.Process) error {
+	arg.ctr = new(container)
+	arg.ctr.InitReceiver(proc, true)
 	return nil
 }
 
-func (mergeRecursive *MergeRecursive) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	anal := proc.GetAnalyze(mergeRecursive.GetIdx(), mergeRecursive.GetParallelIdx(), mergeRecursive.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 
 	result := vm.NewCallResult()
-	for !mergeRecursive.ctr.last {
-		msg := mergeRecursive.ctr.ReceiveFromSingleReg(0, anal)
+	for !arg.ctr.last {
+		msg := arg.ctr.ReceiveFromSingleReg(0, anal)
 		if msg.Err != nil {
 			result.Status = vm.ExecStop
 			return result, msg.Err
@@ -57,26 +57,26 @@ func (mergeRecursive *MergeRecursive) Call(proc *process.Process) (vm.CallResult
 			return result, nil
 		}
 		if bat.Last() {
-			mergeRecursive.ctr.last = true
+			arg.ctr.last = true
 		}
-		mergeRecursive.ctr.bats = append(mergeRecursive.ctr.bats, bat)
+		arg.ctr.bats = append(arg.ctr.bats, bat)
 	}
-	mergeRecursive.ctr.buf = mergeRecursive.ctr.bats[0]
-	mergeRecursive.ctr.bats = mergeRecursive.ctr.bats[1:]
+	arg.ctr.buf = arg.ctr.bats[0]
+	arg.ctr.bats = arg.ctr.bats[1:]
 
-	if mergeRecursive.ctr.buf.Last() {
-		mergeRecursive.ctr.last = false
+	if arg.ctr.buf.Last() {
+		arg.ctr.last = false
 	}
 
-	if mergeRecursive.ctr.buf.End() {
-		mergeRecursive.ctr.buf.Clean(proc.Mp())
+	if arg.ctr.buf.End() {
+		arg.ctr.buf.Clean(proc.Mp())
 		result.Batch = nil
 		result.Status = vm.ExecStop
 		return result, nil
 	}
 
-	anal.Input(mergeRecursive.ctr.buf, mergeRecursive.GetIsFirst())
-	anal.Output(mergeRecursive.ctr.buf, mergeRecursive.GetIsLast())
-	result.Batch = mergeRecursive.ctr.buf
+	anal.Input(arg.ctr.buf, arg.GetIsFirst())
+	anal.Output(arg.ctr.buf, arg.GetIsLast())
+	result.Batch = arg.ctr.buf
 	return result, nil
 }

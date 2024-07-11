@@ -17,9 +17,8 @@ package single
 import (
 	"bytes"
 	"context"
-	"testing"
-
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec/merge"
+	"testing"
 
 	"github.com/matrixorigin/matrixone/pkg/common/hashmap"
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
@@ -42,13 +41,13 @@ const (
 
 // add unit tests for cases
 type joinTestCase struct {
-	arg    *SingleJoin
+	arg    *Argument
 	flgs   []bool // flgs[i] == true: nullable
 	types  []types.Type
 	proc   *process.Process
 	cancel context.CancelFunc
-	barg   *hashbuild.HashBuild
-	marg   *merge.Merge
+	barg   *hashbuild.Argument
+	marg   *merge.Argument
 }
 
 var (
@@ -265,7 +264,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 		flgs:   flgs,
 		proc:   proc,
 		cancel: cancel,
-		arg: &SingleJoin{
+		arg: &Argument{
 			Typs:       ts,
 			Result:     rp,
 			Conditions: cs,
@@ -278,7 +277,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 				},
 			},
 		},
-		barg: &hashbuild.HashBuild{
+		barg: &hashbuild.Argument{
 			Typs:        ts,
 			NeedHashMap: true,
 			Conditions:  cs[1],
@@ -292,7 +291,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 			NeedAllocateSels: true,
 			NeedMergedBatch:  true,
 		},
-		marg: &merge.Merge{},
+		marg: &merge.Argument{},
 	}
 }
 

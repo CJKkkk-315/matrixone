@@ -23,7 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Intersect)
+var _ vm.Operator = new(Argument)
 
 const (
 	build = iota
@@ -31,40 +31,40 @@ const (
 	end
 )
 
-type Intersect struct {
+type Argument struct {
 	ctr *container
 
 	vm.OperatorBase
 }
 
-func (intersect *Intersect) GetOperatorBase() *vm.OperatorBase {
-	return &intersect.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Intersect](
-		func() *Intersect {
-			return &Intersect{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Intersect) {
-			*a = Intersect{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Intersect]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (intersect Intersect) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Intersect {
-	return reuse.Alloc[Intersect](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (intersect *Intersect) Release() {
-	if intersect != nil {
-		reuse.Free[Intersect](intersect, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -87,12 +87,12 @@ type container struct {
 	inBuckets []uint8
 }
 
-func (intersect *Intersect) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	intersect.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (intersect *Intersect) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := intersect.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		if ctr.hashTable != nil {
 			ctr.hashTable.Free()
@@ -110,6 +110,6 @@ func (intersect *Intersect) Free(proc *process.Process, pipelineFailed bool, err
 		}
 		ctr.FreeAllReg()
 
-		intersect.ctr = nil
+		arg.ctr = nil
 	}
 }

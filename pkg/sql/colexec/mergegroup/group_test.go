@@ -36,7 +36,7 @@ const (
 // add unit tests for cases
 
 type groupTestCase struct {
-	arg    *MergeGroup
+	arg    *Argument
 	flgs   []bool // flgs[i] == true: nullable
 	types  []types.Type
 	proc   *process.Process
@@ -196,7 +196,7 @@ func newTestCase(flgs []bool, needEval bool, ts []types.Type) groupTestCase {
 		flgs:   flgs,
 		proc:   proc,
 		cancel: cancel,
-		arg: &MergeGroup{
+		arg: &Argument{
 			NeedEval: needEval,
 			OperatorBase: vm.OperatorBase{
 				OperatorInfo: vm.OperatorInfo{

@@ -22,9 +22,9 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Shuffle)
+var _ vm.Operator = new(Argument)
 
-type Shuffle struct {
+type Argument struct {
 	ctr                *container
 	ShuffleColIdx      int32
 	ShuffleType        int32
@@ -38,34 +38,34 @@ type Shuffle struct {
 	vm.OperatorBase
 }
 
-func (shuffle *Shuffle) GetOperatorBase() *vm.OperatorBase {
-	return &shuffle.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Shuffle](
-		func() *Shuffle {
-			return &Shuffle{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Shuffle) {
-			*a = Shuffle{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Shuffle]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (shuffle Shuffle) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Shuffle {
-	return reuse.Alloc[Shuffle](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (shuffle *Shuffle) Release() {
-	if shuffle != nil {
-		reuse.Free[Shuffle](shuffle, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -77,26 +77,26 @@ type container struct {
 	lastSentBatch *batch.Batch
 }
 
-func (shuffle *Shuffle) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	shuffle.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (shuffle *Shuffle) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if shuffle.RuntimeFilterSpec != nil {
-		shuffle.RuntimeFilterSpec.Handled = false
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.RuntimeFilterSpec != nil {
+		arg.RuntimeFilterSpec.Handled = false
 	}
 	// can't free this
 	/*if arg.msgReceiver != nil {
 		arg.msgReceiver.Free()
 	}*/
-	if shuffle.ctr != nil {
-		for i := range shuffle.ctr.shufflePool {
-			if shuffle.ctr.shufflePool[i] != nil {
-				shuffle.ctr.shufflePool[i].Clean(proc.Mp())
-				shuffle.ctr.shufflePool[i] = nil
+	if arg.ctr != nil {
+		for i := range arg.ctr.shufflePool {
+			if arg.ctr.shufflePool[i] != nil {
+				arg.ctr.shufflePool[i].Clean(proc.Mp())
+				arg.ctr.shufflePool[i] = nil
 			}
 		}
-		shuffle.ctr.sels = nil
-		shuffle.ctr = nil
+		arg.ctr.sels = nil
+		arg.ctr = nil
 	}
 }

@@ -175,72 +175,72 @@ func Test_convertToPipelineInstruction(t *testing.T) {
 		Filter: &external.FilterParam{},
 	}
 	ops := []vm.Operator{
-		&insert.Insert{
+		&insert.Argument{
 			InsertCtx: &insert.InsertCtx{},
 		},
-		&deletion.Deletion{
+		&deletion.Argument{
 			DeleteCtx: &deletion.DeleteCtx{},
 		},
-		&onduplicatekey.OnDuplicatekey{},
-		&preinsert.PreInsert{},
-		&lockop.LockOp{},
-		&preinsertunique.PreInsertUnique{},
-		&anti.AntiJoin{
+		&onduplicatekey.Argument{},
+		&preinsert.Argument{},
+		&lockop.Argument{},
+		&preinsertunique.Argument{},
+		&anti.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&shuffle.Shuffle{},
-		&dispatch.Dispatch{},
-		&group.Group{},
-		&join.InnerJoin{
+		&shuffle.Argument{},
+		&dispatch.Argument{},
+		&group.Argument{},
+		&join.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&left.LeftJoin{
+		&left.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&right.RightJoin{
+		&right.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&rightsemi.RightSemi{
+		&rightsemi.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&rightanti.RightAnti{
+		&rightanti.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&limit.Limit{},
-		&loopanti.LoopAnti{},
-		&loopjoin.LoopJoin{},
-		&loopleft.LoopLeft{},
-		&loopsemi.LoopSemi{},
-		&loopsingle.LoopSingle{},
-		&loopmark.LoopMark{},
-		&offset.Offset{},
-		&order.Order{},
-		&product.Product{},
-		&projection.Projection{},
-		&filter.Filter{},
-		&semi.SemiJoin{
+		&limit.Argument{},
+		&loopanti.Argument{},
+		&loopjoin.Argument{},
+		&loopleft.Argument{},
+		&loopsemi.Argument{},
+		&loopsingle.Argument{},
+		&loopmark.Argument{},
+		&offset.Argument{},
+		&order.Argument{},
+		&product.Argument{},
+		&projection.Argument{},
+		&filter.Argument{},
+		&semi.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&single.SingleJoin{
+		&single.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&top.Top{},
-		&intersect.Intersect{},
-		&minus.Minus{},
-		&intersectall.IntersectAll{},
-		&merge.Merge{},
-		&mergerecursive.MergeRecursive{},
-		&mergegroup.MergeGroup{},
-		&mergelimit.MergeLimit{},
-		&mergelimit.MergeLimit{},
-		&mergeoffset.MergeOffset{},
-		&mergetop.MergeTop{},
-		&mergeorder.MergeOrder{},
-		&mark.MarkJoin{
+		&top.Argument{},
+		&intersect.Argument{},
+		&minus.Argument{},
+		&intersectall.Argument{},
+		&merge.Argument{},
+		&mergerecursive.Argument{},
+		&mergegroup.Argument{},
+		&mergelimit.Argument{},
+		&mergelimit.Argument{},
+		&mergeoffset.Argument{},
+		&mergetop.Argument{},
+		&mergeorder.Argument{},
+		&mark.Argument{
 			Conditions: [][]*plan.Expr{nil, nil},
 		},
-		&table_function.TableFunction{},
-		&external.External{
+		&table_function.Argument{},
+		&external.Argument{
 			Es: &external.ExternalParam{
 				ExParam: exParam,
 			},
@@ -249,7 +249,7 @@ func Test_convertToPipelineInstruction(t *testing.T) {
 		//{
 		//	Arg: &hashbuild.Argument{},
 		//},
-		&source.Source{},
+		&source.Argument{},
 	}
 	ctx := &scopeContext{
 		id:       1,

@@ -25,33 +25,33 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "source"
+const argName = "source"
 
-func (source *Source) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": source scan")
 }
 
-func (source *Source) Prepare(proc *process.Process) error {
+func (arg *Argument) Prepare(proc *process.Process) error {
 	_, span := trace.Start(proc.Ctx, "SourcePrepare")
 	defer span.End()
 
-	source.attrs = make([]string, len(source.TblDef.Cols))
-	source.types = make([]types.Type, len(source.TblDef.Cols))
-	source.Configs = make(map[string]interface{})
-	for i, col := range source.TblDef.Cols {
-		source.attrs[i] = col.Name
-		source.types[i] = types.Type{
+	arg.attrs = make([]string, len(arg.TblDef.Cols))
+	arg.types = make([]types.Type, len(arg.TblDef.Cols))
+	arg.Configs = make(map[string]interface{})
+	for i, col := range arg.TblDef.Cols {
+		arg.attrs[i] = col.Name
+		arg.types[i] = types.Type{
 			Oid:   types.T(col.Typ.Id),
 			Scale: col.Typ.Scale,
 			Width: col.Typ.Width,
 		}
 	}
-	for _, def := range source.TblDef.Defs {
+	for _, def := range arg.TblDef.Defs {
 		switch v := def.Def.(type) {
 		case *plan.TableDef_DefType_Properties:
 			for _, x := range v.Properties.Properties {
-				source.Configs[x.Key] = x.Value
+				arg.Configs[x.Key] = x.Value
 			}
 		}
 	}
@@ -59,7 +59,7 @@ func (source *Source) Prepare(proc *process.Process) error {
 	return nil
 }
 
-func (source *Source) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
@@ -67,22 +67,22 @@ func (source *Source) Call(proc *process.Process) (vm.CallResult, error) {
 	_, span := trace.Start(proc.Ctx, "SourceCall")
 	defer span.End()
 
-	if source.ctr.buf != nil {
-		proc.PutBatch(source.ctr.buf)
-		source.ctr.buf = nil
+	if arg.ctr.buf != nil {
+		proc.PutBatch(arg.ctr.buf)
+		arg.ctr.buf = nil
 	}
 	result := vm.NewCallResult()
 	var err error
 
-	switch source.ctr.status {
+	switch arg.ctr.status {
 	case retrieve:
-		source.ctr.buf, err = mokafka.RetrieveData(proc.Ctx, proc.GetSessionInfo().SourceInMemScanBatch, source.Configs, source.attrs, source.types, source.Offset, source.Limit, proc.Mp(), mokafka.NewKafkaAdapter)
+		arg.ctr.buf, err = mokafka.RetrieveData(proc.Ctx, proc.GetSessionInfo().SourceInMemScanBatch, arg.Configs, arg.attrs, arg.types, arg.Offset, arg.Limit, proc.Mp(), mokafka.NewKafkaAdapter)
 		if err != nil {
 			result.Status = vm.ExecStop
 			return result, err
 		}
-		source.ctr.status = end
-		result.Batch = source.ctr.buf
+		arg.ctr.status = end
+		result.Batch = arg.ctr.buf
 		result.Status = vm.ExecNext
 	case end:
 		result.Status = vm.ExecStop

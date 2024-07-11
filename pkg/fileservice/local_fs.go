@@ -149,7 +149,6 @@ func (l *LocalFS) initCaches(ctx context.Context, config CacheConfig) error {
 				*config.DiskPath,
 				int(*config.DiskCapacity),
 				l.perfCounterSets,
-				true,
 			)
 			if err != nil {
 				return err

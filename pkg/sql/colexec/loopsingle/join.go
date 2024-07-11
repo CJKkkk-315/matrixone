@@ -25,38 +25,38 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "loop_single"
+const argName = "loop_single"
 
-func (loopSingle *LoopSingle) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": loop single join ")
 }
 
-func (loopSingle *LoopSingle) Prepare(proc *process.Process) error {
+func (arg *Argument) Prepare(proc *process.Process) error {
 	var err error
 
-	loopSingle.ctr = new(container)
-	loopSingle.ctr.InitReceiver(proc, false)
-	loopSingle.ctr.bat = batch.NewWithSize(len(loopSingle.Typs))
-	for i, typ := range loopSingle.Typs {
-		loopSingle.ctr.bat.Vecs[i] = proc.GetVector(typ)
+	arg.ctr = new(container)
+	arg.ctr.InitReceiver(proc, false)
+	arg.ctr.bat = batch.NewWithSize(len(arg.Typs))
+	for i, typ := range arg.Typs {
+		arg.ctr.bat.Vecs[i] = proc.GetVector(typ)
 	}
 
-	if loopSingle.Cond != nil {
-		loopSingle.ctr.expr, err = colexec.NewExpressionExecutor(proc, loopSingle.Cond)
+	if arg.Cond != nil {
+		arg.ctr.expr, err = colexec.NewExpressionExecutor(proc, arg.Cond)
 	}
 	return err
 }
 
-func (loopSingle *LoopSingle) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	anal := proc.GetAnalyze(loopSingle.GetIdx(), loopSingle.GetParallelIdx(), loopSingle.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
-	ctr := loopSingle.ctr
+	ctr := arg.ctr
 	result := vm.NewCallResult()
 	for {
 		switch ctr.state {
@@ -83,9 +83,9 @@ func (loopSingle *LoopSingle) Call(proc *process.Process) (vm.CallResult, error)
 				continue
 			}
 			if ctr.bat.RowCount() == 0 {
-				err = ctr.emptyProbe(bat, loopSingle, proc, anal, loopSingle.GetIsFirst(), loopSingle.GetIsLast(), &result)
+				err = ctr.emptyProbe(bat, arg, proc, anal, arg.GetIsFirst(), arg.GetIsLast(), &result)
 			} else {
-				err = ctr.probe(bat, loopSingle, proc, anal, loopSingle.GetIsFirst(), loopSingle.GetIsLast(), &result)
+				err = ctr.probe(bat, arg, proc, anal, arg.GetIsFirst(), arg.GetIsLast(), &result)
 			}
 			proc.PutBatch(bat)
 
@@ -119,7 +119,7 @@ func (ctr *container) build(proc *process.Process, anal process.Analyze) error {
 	return nil
 }
 
-func (ctr *container) emptyProbe(bat *batch.Batch, ap *LoopSingle, proc *process.Process, anal process.Analyze, isFirst bool, isLast bool, result *vm.CallResult) error {
+func (ctr *container) emptyProbe(bat *batch.Batch, ap *Argument, proc *process.Process, anal process.Analyze, isFirst bool, isLast bool, result *vm.CallResult) error {
 	anal.Input(bat, isFirst)
 	if ctr.rbat != nil {
 		proc.PutBatch(ctr.rbat)
@@ -140,7 +140,7 @@ func (ctr *container) emptyProbe(bat *batch.Batch, ap *LoopSingle, proc *process
 	return nil
 }
 
-func (ctr *container) probe(bat *batch.Batch, ap *LoopSingle, proc *process.Process, anal process.Analyze, isFirst bool, isLast bool, result *vm.CallResult) error {
+func (ctr *container) probe(bat *batch.Batch, ap *Argument, proc *process.Process, anal process.Analyze, isFirst bool, isLast bool, result *vm.CallResult) error {
 	anal.Input(bat, isFirst)
 	if ctr.rbat != nil {
 		proc.PutBatch(ctr.rbat)

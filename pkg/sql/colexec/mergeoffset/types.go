@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeOffset)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	colexec.ReceiverOperator
@@ -34,7 +34,7 @@ type container struct {
 	offsetExecutor colexec.ExpressionExecutor
 }
 
-type MergeOffset struct {
+type Argument struct {
 	// Offset records the offset number of mergeOffset operator
 	Offset *plan.Expr
 	// ctr contains the attributes needn't do serialization work
@@ -42,58 +42,58 @@ type MergeOffset struct {
 	vm.OperatorBase
 }
 
-func (mergeOffset *MergeOffset) GetOperatorBase() *vm.OperatorBase {
-	return &mergeOffset.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeOffset](
-		func() *MergeOffset {
-			return &MergeOffset{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeOffset) {
-			*a = MergeOffset{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeOffset]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeOffset MergeOffset) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeOffset {
-	return reuse.Alloc[MergeOffset](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeOffset *MergeOffset) WithOffset(offset *plan.Expr) *MergeOffset {
-	mergeOffset.Offset = offset
-	return mergeOffset
+func (arg *Argument) WithOffset(offset *plan.Expr) *Argument {
+	arg.Offset = offset
+	return arg
 }
 
-func (mergeOffset *MergeOffset) Release() {
-	if mergeOffset != nil {
-		reuse.Free[MergeOffset](mergeOffset, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeOffset *MergeOffset) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeOffset.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeOffset *MergeOffset) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if mergeOffset.ctr != nil {
-		mergeOffset.ctr.FreeMergeTypeOperator(pipelineFailed)
-		if mergeOffset.ctr.offsetExecutor != nil {
-			mergeOffset.ctr.offsetExecutor.Free()
-			mergeOffset.ctr.offsetExecutor = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		arg.ctr.FreeMergeTypeOperator(pipelineFailed)
+		if arg.ctr.offsetExecutor != nil {
+			arg.ctr.offsetExecutor.Free()
+			arg.ctr.offsetExecutor = nil
 		}
-		if mergeOffset.ctr.buf != nil {
-			mergeOffset.ctr.buf.Clean(proc.Mp())
-			mergeOffset.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		mergeOffset.ctr = nil
+		arg.ctr = nil
 	}
 
 }

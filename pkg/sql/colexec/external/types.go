@@ -33,7 +33,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 )
 
-var _ vm.Operator = new(External)
+var _ vm.Operator = new(Argument)
 
 const (
 	ColumnCntLargerErrorInfo = "the table column is larger than input data column"
@@ -103,62 +103,62 @@ type container struct {
 	maxAllocSize int
 	buf          *batch.Batch
 }
-type External struct {
+type Argument struct {
 	ctr *container
 	Es  *ExternalParam
 
 	vm.OperatorBase
 }
 
-func (external *External) GetOperatorBase() *vm.OperatorBase {
-	return &external.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[External](
-		func() *External {
-			return &External{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *External) {
-			*a = External{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[External]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (external External) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *External {
-	return reuse.Alloc[External](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (external *External) WithEs(es *ExternalParam) *External {
-	external.Es = es
-	return external
+func (arg *Argument) WithEs(es *ExternalParam) *Argument {
+	arg.Es = es
+	return arg
 }
 
-func (external *External) Release() {
-	if external != nil {
-		reuse.Free[External](external, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (external *External) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	external.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (external *External) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if external.ctr != nil {
-		if external.ctr.buf != nil {
-			external.ctr.buf.Clean(proc.Mp())
-			external.ctr.buf = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		anal := proc.GetAnalyze(external.GetIdx(), external.GetParallelIdx(), external.GetParallelMajor())
-		anal.Alloc(int64(external.ctr.maxAllocSize))
-		external.ctr = nil
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
+		anal.Alloc(int64(arg.ctr.maxAllocSize))
+		arg.ctr = nil
 	}
 }
 

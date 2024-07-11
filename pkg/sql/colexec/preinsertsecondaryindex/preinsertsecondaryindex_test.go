@@ -71,7 +71,7 @@ func TestPreInsertSecondaryIndex(t *testing.T) {
 	}
 	testBatch.SetRowCount(3)
 
-	argument := PreInsertSecIdx{
+	argument := Argument{
 		ctr: &container{},
 		PreInsertCtx: &plan.PreInsertUkCtx{
 			Columns:  []int32{1, 0},
@@ -94,8 +94,8 @@ func TestPreInsertSecondaryIndex(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func resetChildren(arg *PreInsertSecIdx, bat *batch.Batch) {
-	valueScanArg := &value_scan.ValueScan{
+func resetChildren(arg *Argument, bat *batch.Batch) {
+	valueScanArg := &value_scan.Argument{
 		Batchs: []*batch.Batch{bat},
 	}
 	valueScanArg.Prepare(nil)

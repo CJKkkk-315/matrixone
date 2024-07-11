@@ -36,7 +36,7 @@ const (
 
 // add unit tests for cases
 type orderTestCase struct {
-	arg   *Order
+	arg   *Argument
 	types []types.Type
 	proc  *process.Process
 }
@@ -126,7 +126,7 @@ func newTestCase(ts []types.Type, fs []*plan.OrderBySpec) orderTestCase {
 	return orderTestCase{
 		types: ts,
 		proc:  testutil.NewProcessWithMPool(mpool.MustNewZero()),
-		arg: &Order{
+		arg: &Argument{
 			OrderBySpec: fs,
 			OperatorBase: vm.OperatorBase{
 				OperatorInfo: vm.OperatorInfo{
@@ -157,8 +157,8 @@ func newBatch(ts []types.Type, proc *process.Process, rows int64) *batch.Batch {
 	return testutil.NewBatch(ts, false, int(rows), proc.Mp())
 }
 
-func resetChildren(arg *Order, bats []*batch.Batch) {
-	valueScanArg := &value_scan.ValueScan{
+func resetChildren(arg *Argument, bats []*batch.Batch) {
+	valueScanArg := &value_scan.Argument{
 		Batchs: bats,
 	}
 	valueScanArg.Prepare(nil)

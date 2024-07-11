@@ -31,7 +31,7 @@ import (
 )
 
 type unnestTestCase struct {
-	arg      *TableFunction
+	arg      *Argument
 	proc     *process.Process
 	jsons    []string
 	paths    []string
@@ -133,7 +133,7 @@ func newTestCase(m *mpool.MPool, attrs []string, jsons, paths []string, outers [
 
 	ret := unnestTestCase{
 		proc: proc,
-		arg: &TableFunction{
+		arg: &Argument{
 			Attrs:    attrs,
 			Rets:     colDefs,
 			FuncName: "unnest",
@@ -312,8 +312,8 @@ func appendOtherExprs(ret []*plan.Expr, paths []string, outers []bool) []*plan.E
 	return ret
 }
 
-func resetChildren(arg *TableFunction, bat *batch.Batch) {
-	valueScanArg := &value_scan.ValueScan{
+func resetChildren(arg *Argument, bat *batch.Batch) {
+	valueScanArg := &value_scan.Argument{
 		Batchs: []*batch.Batch{bat},
 	}
 	valueScanArg.Prepare(nil)

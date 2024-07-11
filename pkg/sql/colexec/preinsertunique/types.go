@@ -27,12 +27,12 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(PreInsertUnique)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	buf *batch.Batch
 }
-type PreInsertUnique struct {
+type Argument struct {
 	ctr          *container
 	Ctx          context.Context
 	PreInsertCtx *plan.PreInsertUkCtx
@@ -42,49 +42,49 @@ type PreInsertUnique struct {
 	vm.OperatorBase
 }
 
-func (preInsertUnique *PreInsertUnique) GetOperatorBase() *vm.OperatorBase {
-	return &preInsertUnique.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[PreInsertUnique](
-		func() *PreInsertUnique {
-			return &PreInsertUnique{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *PreInsertUnique) {
-			*a = PreInsertUnique{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[PreInsertUnique]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (preInsertUnique PreInsertUnique) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *PreInsertUnique {
-	return reuse.Alloc[PreInsertUnique](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (preInsertUnique *PreInsertUnique) Release() {
-	if preInsertUnique != nil {
-		reuse.Free[PreInsertUnique](preInsertUnique, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (preInsertUnique *PreInsertUnique) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	preInsertUnique.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (preInsertUnique *PreInsertUnique) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if preInsertUnique.ctr != nil {
-		if preInsertUnique.ctr.buf != nil {
-			preInsertUnique.ctr.buf.Clean(proc.Mp())
-			preInsertUnique.ctr.buf = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		preInsertUnique.ctr = nil
+		arg.ctr = nil
 	}
 
-	preInsertUnique.packers.Free()
+	arg.packers.Free()
 }

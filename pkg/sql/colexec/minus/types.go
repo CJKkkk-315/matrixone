@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Minus)
+var _ vm.Operator = new(Argument)
 
 const (
 	buildingHashMap = iota
@@ -32,40 +32,40 @@ const (
 	operatorEnd
 )
 
-type Minus struct {
+type Argument struct {
 	ctr *container
 
 	vm.OperatorBase
 }
 
-func (minus *Minus) GetOperatorBase() *vm.OperatorBase {
-	return &minus.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Minus](
-		func() *Minus {
-			return &Minus{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Minus) {
-			*a = Minus{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Minus]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (minus Minus) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Minus {
-	return reuse.Alloc[Minus](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (minus *Minus) Release() {
-	if minus != nil {
-		reuse.Free[Minus](minus, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -82,17 +82,17 @@ type container struct {
 	bat *batch.Batch
 }
 
-func (minus *Minus) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	minus.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (minus *Minus) Free(proc *process.Process, pipelineFailed bool, err error) {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
 	mp := proc.Mp()
-	if minus.ctr != nil {
-		minus.ctr.cleanBatch(mp)
-		minus.ctr.cleanHashMap()
-		minus.ctr.FreeAllReg()
-		minus.ctr = nil
+	if arg.ctr != nil {
+		arg.ctr.cleanBatch(mp)
+		arg.ctr.cleanHashMap()
+		arg.ctr.FreeAllReg()
+		arg.ctr = nil
 	}
 }
 

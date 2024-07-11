@@ -35,7 +35,7 @@ const (
 
 // add unit tests for cases
 type dispatchTestCase struct {
-	arg    *Dispatch
+	arg    *Argument
 	types  []types.Type
 	proc   *process.Process
 	cancel context.CancelFunc
@@ -107,7 +107,7 @@ func newTestCase() dispatchTestCase {
 	return dispatchTestCase{
 		proc:  proc,
 		types: []types.Type{types.T_int8.ToType()},
-		arg: &Dispatch{
+		arg: &Argument{
 			FuncId:    SendToAllLocalFunc,
 			LocalRegs: []*process.WaitRegister{reg},
 			OperatorBase: vm.OperatorBase{
@@ -128,8 +128,8 @@ func newBatch(ts []types.Type, proc *process.Process, rows int64) *batch.Batch {
 	return testutil.NewBatch(ts, false, int(rows), proc.Mp())
 }
 
-func resetChildren(arg *Dispatch, bats []*batch.Batch) {
-	valueScanArg := &value_scan.ValueScan{
+func resetChildren(arg *Argument, bats []*batch.Batch) {
+	valueScanArg := &value_scan.Argument{
 		Batchs: bats,
 	}
 	valueScanArg.Prepare(nil)

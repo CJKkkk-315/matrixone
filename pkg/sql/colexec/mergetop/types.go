@@ -25,7 +25,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeTop)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	colexec.ReceiverOperator
@@ -43,7 +43,7 @@ type container struct {
 	executorsForOrderList []colexec.ExpressionExecutor
 }
 
-type MergeTop struct {
+type Argument struct {
 	Limit *plan.Expr          // Limit store the number of mergeTop-operator
 	ctr   *container          // ctr stores the attributes needn't do Serialization work
 	Fs    []*plan.OrderBySpec // Fs store the order information
@@ -51,59 +51,59 @@ type MergeTop struct {
 	vm.OperatorBase
 }
 
-func (mergeTop *MergeTop) GetOperatorBase() *vm.OperatorBase {
-	return &mergeTop.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeTop](
-		func() *MergeTop {
-			return &MergeTop{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeTop) {
-			*a = MergeTop{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeTop]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeTop MergeTop) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeTop {
-	return reuse.Alloc[MergeTop](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeTop *MergeTop) WithLimit(limit *plan.Expr) *MergeTop {
-	mergeTop.Limit = limit
-	return mergeTop
+func (arg *Argument) WithLimit(limit *plan.Expr) *Argument {
+	arg.Limit = limit
+	return arg
 }
 
-func (mergeTop *MergeTop) WithFs(fs []*plan.OrderBySpec) *MergeTop {
-	mergeTop.Fs = fs
-	return mergeTop
+func (arg *Argument) WithFs(fs []*plan.OrderBySpec) *Argument {
+	arg.Fs = fs
+	return arg
 }
 
-func (mergeTop *MergeTop) Release() {
-	if mergeTop != nil {
-		reuse.Free[MergeTop](mergeTop, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeTop *MergeTop) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeTop.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeTop *MergeTop) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := mergeTop.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.cleanBatch(mp)
 		ctr.cleanExecutors()
 		ctr.FreeMergeTypeOperator(pipelineFailed)
-		mergeTop.ctr = nil
+		arg.ctr = nil
 	}
 }
 

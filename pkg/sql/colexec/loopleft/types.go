@@ -26,7 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(LoopLeft)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -47,7 +47,7 @@ type container struct {
 	cfs      []func(*vector.Vector, *vector.Vector, int64, int) error
 }
 
-type LoopLeft struct {
+type Argument struct {
 	ctr    *container
 	Typs   []types.Type
 	Cond   *plan.Expr
@@ -55,46 +55,46 @@ type LoopLeft struct {
 	vm.OperatorBase
 }
 
-func (loopLeft *LoopLeft) GetOperatorBase() *vm.OperatorBase {
-	return &loopLeft.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 func init() {
-	reuse.CreatePool[LoopLeft](
-		func() *LoopLeft {
-			return &LoopLeft{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *LoopLeft) {
-			*a = LoopLeft{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[LoopLeft]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (loopLeft LoopLeft) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *LoopLeft {
-	return reuse.Alloc[LoopLeft](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (loopLeft *LoopLeft) Release() {
-	if loopLeft != nil {
-		reuse.Free[LoopLeft](loopLeft, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (loopLeft *LoopLeft) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	loopLeft.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (loopLeft *LoopLeft) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if ctr := loopLeft.ctr; ctr != nil {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if ctr := arg.ctr; ctr != nil {
 		ctr.cleanBatch(proc.Mp())
 		ctr.cleanExprExecutor()
 		ctr.FreeAllReg()
-		loopLeft.ctr = nil
+		arg.ctr = nil
 	}
 }
 

@@ -22,7 +22,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(IndexBuild)
+var _ vm.Operator = new(Argument)
 
 const (
 	ReceiveBatch = iota
@@ -35,54 +35,54 @@ type container struct {
 	batch *batch.Batch
 }
 
-type IndexBuild struct {
+type Argument struct {
 	ctr               *container
 	RuntimeFilterSpec *plan.RuntimeFilterSpec
 	vm.OperatorBase
 }
 
-func (indexBuild *IndexBuild) GetOperatorBase() *vm.OperatorBase {
-	return &indexBuild.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[IndexBuild](
-		func() *IndexBuild {
-			return &IndexBuild{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *IndexBuild) {
-			*a = IndexBuild{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[IndexBuild]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (indexBuild IndexBuild) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *IndexBuild {
-	return reuse.Alloc[IndexBuild](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (indexBuild *IndexBuild) Release() {
-	if indexBuild != nil {
-		reuse.Free[IndexBuild](indexBuild, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (indexBuild *IndexBuild) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	indexBuild.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (indexBuild *IndexBuild) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := indexBuild.ctr
-	proc.FinalizeRuntimeFilter(indexBuild.RuntimeFilterSpec)
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
+	proc.FinalizeRuntimeFilter(arg.RuntimeFilterSpec)
 	if ctr != nil {
 		if ctr.batch != nil {
 			proc.PutBatch(ctr.batch)
 		}
-		indexBuild.ctr = nil
+		arg.ctr = nil
 	}
 }

@@ -20,60 +20,60 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Connector)
+var _ vm.Operator = new(Argument)
 
-// Connector pipe connector
-type Connector struct {
+// Argument pipe connector
+type Argument struct {
 	Reg *process.WaitRegister
 	vm.OperatorBase
 }
 
-func (connector *Connector) GetOperatorBase() *vm.OperatorBase {
-	return &connector.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Connector](
-		func() *Connector {
-			return &Connector{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Connector) {
-			*a = Connector{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Connector]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (connector Connector) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Connector {
-	return reuse.Alloc[Connector](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (connector *Connector) WithReg(reg *process.WaitRegister) *Connector {
-	connector.Reg = reg
-	return connector
+func (arg *Argument) WithReg(reg *process.WaitRegister) *Argument {
+	arg.Reg = reg
+	return arg
 }
 
-func (connector *Connector) Release() {
-	if connector != nil {
-		reuse.Free[Connector](connector, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (connector *Connector) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	connector.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (connector *Connector) Free(proc *process.Process, pipelineFailed bool, err error) {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
 	// told the next operator to stop if it is still running.
 	msg := process.NewRegMsg(nil)
 	msg.Err = err
 	select {
-	case connector.Reg.Ch <- msg:
-	case <-connector.Reg.Ctx.Done():
+	case arg.Reg.Ch <- msg:
+	case <-arg.Reg.Ctx.Done():
 	}
 }

@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(ShuffleBuild)
+var _ vm.Operator = new(Argument)
 
 const (
 	ReceiveBatch = iota
@@ -54,7 +54,7 @@ type container struct {
 	uniqueJoinKeys     []*vector.Vector
 }
 
-type ShuffleBuild struct {
+type Argument struct {
 	ctr *container
 	// need to generate a push-down filter expression
 	NeedExpr         bool
@@ -69,49 +69,49 @@ type ShuffleBuild struct {
 	vm.OperatorBase
 }
 
-func (shuffleBuild *ShuffleBuild) GetOperatorBase() *vm.OperatorBase {
-	return &shuffleBuild.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[ShuffleBuild](
-		func() *ShuffleBuild {
-			return &ShuffleBuild{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *ShuffleBuild) {
-			*a = ShuffleBuild{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[ShuffleBuild]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (shuffleBuild ShuffleBuild) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *ShuffleBuild {
-	return reuse.Alloc[ShuffleBuild](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (shuffleBuild *ShuffleBuild) Release() {
-	if shuffleBuild != nil {
-		reuse.Free[ShuffleBuild](shuffleBuild, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (shuffleBuild *ShuffleBuild) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	shuffleBuild.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (shuffleBuild *ShuffleBuild) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := shuffleBuild.ctr
-	proc.FinalizeRuntimeFilter(shuffleBuild.RuntimeFilterSpec)
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
+	proc.FinalizeRuntimeFilter(arg.RuntimeFilterSpec)
 	if ctr != nil {
 		ctr.cleanBatches(proc)
 		ctr.cleanEvalVectors()
 		ctr.cleanHashMap()
-		shuffleBuild.ctr = nil
+		arg.ctr = nil
 	}
 }
 

@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Product)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -42,7 +42,7 @@ type container struct {
 	inBat    *batch.Batch
 }
 
-type Product struct {
+type Argument struct {
 	ctr       *container
 	Typs      []types.Type
 	Result    []colexec.ResultPos
@@ -50,48 +50,48 @@ type Product struct {
 	vm.OperatorBase
 }
 
-func (product *Product) GetOperatorBase() *vm.OperatorBase {
-	return &product.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Product](
-		func() *Product {
-			return &Product{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Product) {
-			*a = Product{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Product]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (product Product) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Product {
-	return reuse.Alloc[Product](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (product *Product) Release() {
-	if product != nil {
-		reuse.Free[Product](product, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (product *Product) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	product.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (product *Product) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := product.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.cleanBatch(mp)
 		ctr.FreeAllReg()
-		product.ctr = nil
+		arg.ctr = nil
 	}
 }
 

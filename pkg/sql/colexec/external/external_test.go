@@ -45,7 +45,7 @@ const (
 
 // add unit tests for cases
 type externalTestCase struct {
-	arg      *External
+	arg      *Argument
 	types    []types.Type
 	proc     *process.Process
 	cancel   context.CancelFunc
@@ -65,7 +65,7 @@ func newTestCase(format, jsondata string) externalTestCase {
 	return externalTestCase{
 		proc:  proc,
 		types: []types.Type{types.T_int8.ToType()},
-		arg: &External{
+		arg: &Argument{
 			ctr: &container{},
 			Es: &ExternalParam{
 				ExParamConst: ExParamConst{

@@ -21,62 +21,62 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Output)
+var _ vm.Operator = new(Argument)
 
-type Output struct {
+type Argument struct {
 	Data interface{}
 	Func func(*batch.Batch) error
 
 	vm.OperatorBase
 }
 
-func (output *Output) GetOperatorBase() *vm.OperatorBase {
-	return &output.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Output](
-		func() *Output {
-			return &Output{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Output) {
-			*a = Output{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Output]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (output Output) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Output {
-	return reuse.Alloc[Output](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (output *Output) WithData(data interface{}) *Output {
-	output.Data = data
-	return output
+func (arg *Argument) WithData(data interface{}) *Argument {
+	arg.Data = data
+	return arg
 }
 
-func (output *Output) WithFunc(Func func(*batch.Batch) error) *Output {
-	output.Func = Func
-	return output
+func (arg *Argument) WithFunc(Func func(*batch.Batch) error) *Argument {
+	arg.Func = Func
+	return arg
 }
 
-func (output *Output) Release() {
-	if output != nil {
-		reuse.Free[Output](output, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (output *Output) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	output.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (output *Output) Free(proc *process.Process, pipelineFailed bool, err error) {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
 	if !pipelineFailed {
-		_ = output.Func(nil)
+		_ = arg.Func(nil)
 	}
 }

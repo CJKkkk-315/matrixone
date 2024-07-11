@@ -25,7 +25,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Productl2)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -43,7 +43,7 @@ type container struct {
 	inBat    *batch.Batch // probe batch
 }
 
-type Productl2 struct {
+type Argument struct {
 	ctr    *container
 	Typs   []types.Type
 	Result []colexec.ResultPos
@@ -51,48 +51,48 @@ type Productl2 struct {
 	vm.OperatorBase
 }
 
-func (productl2 *Productl2) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	productl2.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (productl2 *Productl2) GetOperatorBase() *vm.OperatorBase {
-	return &productl2.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Productl2](
-		func() *Productl2 {
-			return &Productl2{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Productl2) {
-			*a = Productl2{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Productl2]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (productl2 Productl2) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Productl2 {
-	return reuse.Alloc[Productl2](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (productl2 *Productl2) Release() {
-	if productl2 != nil {
-		reuse.Free[Productl2](productl2, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (productl2 *Productl2) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := productl2.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.cleanBatch(mp)
 		ctr.FreeAllReg()
-		productl2.ctr = nil
+		arg.ctr = nil
 	}
 }
 

@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(RightAnti)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -76,7 +76,7 @@ type container struct {
 	buf          []*batch.Batch
 }
 
-type RightAnti struct {
+type Argument struct {
 	ctr        *container
 	Result     []int32
 	RightTypes []types.Type
@@ -94,46 +94,46 @@ type RightAnti struct {
 	vm.OperatorBase
 }
 
-func (rightAnti *RightAnti) GetOperatorBase() *vm.OperatorBase {
-	return &rightAnti.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[RightAnti](
-		func() *RightAnti {
-			return &RightAnti{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *RightAnti) {
-			*a = RightAnti{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[RightAnti]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (rightAnti RightAnti) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *RightAnti {
-	return reuse.Alloc[RightAnti](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (rightAnti *RightAnti) Release() {
-	if rightAnti != nil {
-		reuse.Free[RightAnti](rightAnti, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (rightAnti *RightAnti) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	rightAnti.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (rightAnti *RightAnti) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := rightAnti.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
-		if !ctr.handledLast && rightAnti.NumCPU > 1 && !rightAnti.IsMerger {
-			rightAnti.Channel <- nil
+		if !ctr.handledLast && arg.NumCPU > 1 && !arg.IsMerger {
+			arg.Channel <- nil
 		}
 		ctr.cleanBatch(proc)
 		ctr.cleanEvalVectors()
@@ -142,10 +142,10 @@ func (rightAnti *RightAnti) Free(proc *process.Process, pipelineFailed bool, err
 		ctr.FreeAllReg()
 		ctr.tmpBatches = nil
 
-		anal := proc.GetAnalyze(rightAnti.GetIdx(), rightAnti.GetParallelIdx(), rightAnti.GetParallelMajor())
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 		anal.Alloc(ctr.maxAllocSize)
 
-		rightAnti.ctr = nil
+		arg.ctr = nil
 	}
 }
 

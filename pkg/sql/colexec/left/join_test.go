@@ -42,13 +42,13 @@ const (
 
 // add unit tests for cases
 type joinTestCase struct {
-	arg    *LeftJoin
+	arg    *Argument
 	flgs   []bool // flgs[i] == true: nullable
 	types  []types.Type
 	proc   *process.Process
 	cancel context.CancelFunc
-	barg   *hashbuild.HashBuild
-	marg   *merge.Merge
+	barg   *hashbuild.Argument
+	marg   *merge.Argument
 }
 
 var (
@@ -300,7 +300,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 		flgs:   flgs,
 		proc:   proc,
 		cancel: cancel,
-		arg: &LeftJoin{
+		arg: &Argument{
 			Typs:       ts,
 			Result:     rp,
 			Conditions: cs,
@@ -313,7 +313,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 				},
 			},
 		},
-		barg: &hashbuild.HashBuild{
+		barg: &hashbuild.Argument{
 			Typs:        ts,
 			NeedHashMap: true,
 			Conditions:  cs[1],
@@ -327,7 +327,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos, cs [][]*p
 			NeedAllocateSels: true,
 			NeedMergedBatch:  true,
 		},
-		marg: &merge.Merge{},
+		marg: &merge.Argument{},
 	}
 }
 

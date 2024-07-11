@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(RightSemi)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -77,7 +77,7 @@ type container struct {
 	maxAllocSize int64
 }
 
-type RightSemi struct {
+type Argument struct {
 	ctr        *container
 	Result     []int32
 	RightTypes []types.Type
@@ -95,46 +95,46 @@ type RightSemi struct {
 	vm.OperatorBase
 }
 
-func (rightSemi *RightSemi) GetOperatorBase() *vm.OperatorBase {
-	return &rightSemi.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[RightSemi](
-		func() *RightSemi {
-			return &RightSemi{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *RightSemi) {
-			*a = RightSemi{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[RightSemi]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (rightSemi RightSemi) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *RightSemi {
-	return reuse.Alloc[RightSemi](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (rightSemi *RightSemi) Release() {
-	if rightSemi != nil {
-		reuse.Free[RightSemi](rightSemi, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (rightSemi *RightSemi) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	rightSemi.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (rightSemi *RightSemi) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := rightSemi.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
-		if !ctr.handledLast && rightSemi.NumCPU > 1 && !rightSemi.IsMerger {
-			rightSemi.Channel <- nil
+		if !ctr.handledLast && arg.NumCPU > 1 && !arg.IsMerger {
+			arg.Channel <- nil
 		}
 		ctr.cleanBatch(proc)
 		ctr.cleanEvalVectors()
@@ -143,10 +143,10 @@ func (rightSemi *RightSemi) Free(proc *process.Process, pipelineFailed bool, err
 		ctr.FreeAllReg()
 		ctr.tmpBatches = nil
 
-		anal := proc.GetAnalyze(rightSemi.GetIdx(), rightSemi.GetParallelIdx(), rightSemi.GetParallelMajor())
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 		anal.Alloc(ctr.maxAllocSize)
 
-		rightSemi.ctr = nil
+		arg.ctr = nil
 	}
 }
 

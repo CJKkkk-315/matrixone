@@ -23,41 +23,41 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "index_build"
+const argName = "index_build"
 
-func (indexBuild *IndexBuild) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": index build ")
 }
 
-func (indexBuild *IndexBuild) Prepare(proc *process.Process) (err error) {
-	if indexBuild.RuntimeFilterSpec == nil {
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	if arg.RuntimeFilterSpec == nil {
 		panic("there must be runtime filter in index build!")
 	}
-	indexBuild.ctr = new(container)
+	arg.ctr = new(container)
 	return nil
 }
 
-func (indexBuild *IndexBuild) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	anal := proc.GetAnalyze(indexBuild.GetIdx(), indexBuild.GetParallelIdx(), indexBuild.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 	result := vm.NewCallResult()
-	ctr := indexBuild.ctr
+	ctr := arg.ctr
 	for {
 		switch ctr.state {
 		case ReceiveBatch:
-			if err := ctr.build(indexBuild, proc, anal, indexBuild.GetIsFirst()); err != nil {
+			if err := ctr.build(arg, proc, anal, arg.GetIsFirst()); err != nil {
 				return result, err
 			}
 			ctr.state = HandleRuntimeFilter
 
 		case HandleRuntimeFilter:
-			if err := ctr.handleRuntimeFilter(indexBuild, proc); err != nil {
+			if err := ctr.handleRuntimeFilter(arg, proc); err != nil {
 				return result, err
 			}
 			ctr.state = End
@@ -73,10 +73,10 @@ func (indexBuild *IndexBuild) Call(proc *process.Process) (vm.CallResult, error)
 	}
 }
 
-func (ctr *container) collectBuildBatches(indexBuild *IndexBuild, proc *process.Process, anal process.Analyze, isFirst bool) error {
+func (ctr *container) collectBuildBatches(arg *Argument, proc *process.Process, anal process.Analyze, isFirst bool) error {
 	var currentBatch *batch.Batch
 	for {
-		result, err := indexBuild.Children[0].Call(proc)
+		result, err := arg.Children[0].Call(proc)
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (ctr *container) collectBuildBatches(indexBuild *IndexBuild, proc *process.
 			return err
 		}
 		proc.PutBatch(currentBatch)
-		if ctr.batch.RowCount() > int(indexBuild.RuntimeFilterSpec.UpperLimit) {
+		if ctr.batch.RowCount() > int(arg.RuntimeFilterSpec.UpperLimit) {
 			// for index build, can exit early
 			return nil
 		}
@@ -104,7 +104,7 @@ func (ctr *container) collectBuildBatches(indexBuild *IndexBuild, proc *process.
 	return nil
 }
 
-func (ctr *container) build(ap *IndexBuild, proc *process.Process, anal process.Analyze, isFirst bool) error {
+func (ctr *container) build(ap *Argument, proc *process.Process, anal process.Analyze, isFirst bool) error {
 	err := ctr.collectBuildBatches(ap, proc, anal, isFirst)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (ctr *container) build(ap *IndexBuild, proc *process.Process, anal process.
 	return nil
 }
 
-func (ctr *container) handleRuntimeFilter(ap *IndexBuild, proc *process.Process) error {
+func (ctr *container) handleRuntimeFilter(ap *Argument, proc *process.Process) error {
 	var runtimeFilter process.RuntimeFilterMessage
 	runtimeFilter.Tag = ap.RuntimeFilterSpec.Tag
 

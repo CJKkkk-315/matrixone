@@ -29,7 +29,7 @@ import (
 
 type intersectAllTestCase struct {
 	proc   *process.Process
-	arg    *IntersectAll
+	arg    *Argument
 	cancel context.CancelFunc
 }
 
@@ -91,7 +91,7 @@ func TestIntersectAll(t *testing.T) {
 
 func newIntersectAllTestCase(proc *process.Process) (intersectAllTestCase, context.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
-	arg := new(IntersectAll)
+	arg := new(Argument)
 	arg.OperatorBase.OperatorInfo = vm.OperatorInfo{
 		Idx:     0,
 		IsFirst: false,

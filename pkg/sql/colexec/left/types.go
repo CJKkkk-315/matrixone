@@ -26,7 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(LeftJoin)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -68,7 +68,7 @@ type container struct {
 	bat          *batch.Batch
 }
 
-type LeftJoin struct {
+type Argument struct {
 	ctr        *container
 	Result     []colexec.ResultPos
 	Typs       []types.Type
@@ -82,43 +82,43 @@ type LeftJoin struct {
 	vm.OperatorBase
 }
 
-func (leftJoin *LeftJoin) GetOperatorBase() *vm.OperatorBase {
-	return &leftJoin.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[LeftJoin](
-		func() *LeftJoin {
-			return &LeftJoin{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *LeftJoin) {
-			*a = LeftJoin{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[LeftJoin]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (leftJoin LeftJoin) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *LeftJoin {
-	return reuse.Alloc[LeftJoin](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (leftJoin *LeftJoin) Release() {
-	if leftJoin != nil {
-		reuse.Free[LeftJoin](leftJoin, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (leftJoin *LeftJoin) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	leftJoin.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (leftJoin *LeftJoin) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := leftJoin.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		ctr.cleanBatch(proc)
 		ctr.cleanHashMap()
@@ -126,15 +126,15 @@ func (leftJoin *LeftJoin) Free(proc *process.Process, pipelineFailed bool, err e
 		ctr.cleanEvalVectors()
 		ctr.FreeAllReg()
 
-		anal := proc.GetAnalyze(leftJoin.GetIdx(), leftJoin.GetParallelIdx(), leftJoin.GetParallelMajor())
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 		anal.Alloc(ctr.maxAllocSize)
 
-		if leftJoin.ctr.bat != nil {
-			proc.PutBatch(leftJoin.ctr.bat)
-			leftJoin.ctr.bat = nil
+		if arg.ctr.bat != nil {
+			proc.PutBatch(arg.ctr.bat)
+			arg.ctr.bat = nil
 		}
-		leftJoin.ctr.lastrow = 0
-		leftJoin.ctr = nil
+		arg.ctr.lastrow = 0
+		arg.ctr = nil
 	}
 }
 

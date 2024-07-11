@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(RightJoin)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -74,7 +74,7 @@ type container struct {
 	maxAllocSize int64
 }
 
-type RightJoin struct {
+type Argument struct {
 	ctr        *container
 	Result     []colexec.ResultPos
 	LeftTypes  []types.Type
@@ -94,46 +94,46 @@ type RightJoin struct {
 	vm.OperatorBase
 }
 
-func (rightJoin *RightJoin) GetOperatorBase() *vm.OperatorBase {
-	return &rightJoin.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[RightJoin](
-		func() *RightJoin {
-			return &RightJoin{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *RightJoin) {
-			*a = RightJoin{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[RightJoin]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (rightJoin RightJoin) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *RightJoin {
-	return reuse.Alloc[RightJoin](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (rightJoin *RightJoin) Release() {
-	if rightJoin != nil {
-		reuse.Free[RightJoin](rightJoin, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (rightJoin *RightJoin) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	rightJoin.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (rightJoin *RightJoin) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := rightJoin.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
-		if !ctr.handledLast && rightJoin.NumCPU > 1 && !rightJoin.IsMerger {
-			rightJoin.Channel <- nil
+		if !ctr.handledLast && arg.NumCPU > 1 && !arg.IsMerger {
+			arg.Channel <- nil
 		}
 		ctr.cleanBatch(proc)
 		ctr.cleanHashMap()
@@ -141,13 +141,13 @@ func (rightJoin *RightJoin) Free(proc *process.Process, pipelineFailed bool, err
 		ctr.FreeAllReg()
 		ctr.cleanEvalVectors()
 
-		anal := proc.GetAnalyze(rightJoin.GetIdx(), rightJoin.GetParallelIdx(), rightJoin.GetParallelMajor())
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 		anal.Alloc(ctr.maxAllocSize)
-		if rightJoin.ctr.buf != nil {
-			proc.PutBatch(rightJoin.ctr.buf)
-			rightJoin.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			proc.PutBatch(arg.ctr.buf)
+			arg.ctr.buf = nil
 		}
-		rightJoin.ctr = nil
+		arg.ctr = nil
 	}
 
 }

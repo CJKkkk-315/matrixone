@@ -33,7 +33,6 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/db/checkpoint"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/logtail"
 	"github.com/matrixorigin/matrixone/pkg/vm/engine/tae/tasks"
-	"sort"
 
 	"io"
 	"os"
@@ -350,12 +349,12 @@ func execBackup(
 	}
 
 	// copy checkpoint and gc meta
-	sizeList, minTs, err := CopyCheckpointDir(ctx, srcFs, dstFs, "ckp", start)
+	sizeList, err := CopyDir(ctx, srcFs, dstFs, "ckp", start)
 	if err != nil {
 		return err
 	}
 	taeFileList = append(taeFileList, sizeList...)
-	sizeList, err = CopyGCDir(ctx, srcFs, dstFs, "gc", start, minTs)
+	sizeList, err = CopyDir(ctx, srcFs, dstFs, "gc", start)
 	if err != nil {
 		return err
 	}
@@ -413,97 +412,30 @@ func execBackup(
 	return nil
 }
 
-// CopyCheckpointDir copy checkpoint dir from srcFs to dstFs
-// return taeFile list
-// copy: if copy is true,it means not to check the suffix name and copy all files.
-func copyFileAndGetMetaFiles(
-	ctx context.Context,
-	srcFs, dstFs fileservice.FileService,
-	dir string,
-	backup types.TS,
-	decodeFunc func(string) (types.TS, types.TS, string),
-	copy bool,
-) ([]*taeFile, []*checkpoint.MetaFile, []fileservice.DirEntry, error) {
+func CopyDir(ctx context.Context, srcFs, dstFs fileservice.FileService, dir string, backup types.TS) ([]*taeFile, error) {
+	var checksum []byte
 	files, err := srcFs.List(ctx, dir)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	taeFileList := make([]*taeFile, 0, len(files))
-	metaFiles := make([]*checkpoint.MetaFile, 0)
-	var checksum []byte
-	for i, file := range files {
+
+	for _, file := range files {
 		if file.IsDir {
 			panic("not support dir")
 		}
-		start, end, ext := decodeFunc(file.Name)
+		start, _ := blockio.DecodeCheckpointMetadataFileName(file.Name)
 		if !backup.IsEmpty() && start.GreaterEq(&backup) {
 			logutil.Infof("[Backup] skip file %v", file.Name)
 			continue
 		}
-		if copy || ext == blockio.AcctExt || ext == blockio.SnapshotExt {
-			checksum, err = CopyFileWithRetry(ctx, srcFs, dstFs, file.Name, dir)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			taeFileList = append(taeFileList, &taeFile{
-				path:     dir + string(os.PathSeparator) + file.Name,
-				size:     file.Size,
-				checksum: checksum,
-				needCopy: true,
-				ts:       backup,
-			})
-		}
-
-		if copy || ext == blockio.CheckpointExt || ext == blockio.GCFullExt {
-			metaFile := checkpoint.NewMetaFile(i, start, end, file.Name)
-			metaFiles = append(metaFiles, metaFile)
-		}
-	}
-
-	if len(metaFiles) == 0 {
-		return taeFileList, metaFiles, files, nil
-	}
-	sort.Slice(metaFiles, func(i, j int) bool {
-		end1 := metaFiles[i].GetEnd()
-		end2 := metaFiles[j].GetEnd()
-		return end1.Less(&end2)
-	})
-
-	return taeFileList, metaFiles, files, nil
-}
-
-func CopyGCDir(
-	ctx context.Context,
-	srcFs, dstFs fileservice.FileService,
-	dir string,
-	backup, min types.TS,
-) ([]*taeFile, error) {
-	var checksum []byte
-
-	taeFileList, metaFiles, files, err := copyFileAndGetMetaFiles(
-		ctx, srcFs, dstFs, dir, backup, blockio.DecodeGCMetadataFileName, false)
-	if err != nil {
-		return nil, err
-	}
-	for i, metaFile := range metaFiles {
-		name := metaFile.GetName()
-		if i == len(metaFiles)-1 {
-			end := metaFile.GetEnd()
-			if !min.IsEmpty() && end.Less(&min) {
-				// It means that the gc consumption is too slow, and the gc water level needs to be raised.
-				// Otherwise, the gc will not work after the cluster is restored because it cannot find the checkpoint.
-				// The gc water level is determined by the name of the meta,
-				// so the name of the last gc meta needs to be modified.
-				name = blockio.UpdateGCMetadataFileName(name, end, min)
-			}
-		}
-		checksum, err = CopyFileWithRetry(ctx, srcFs, dstFs, metaFile.GetName(), dir, name)
+		checksum, err = CopyFileWithRetry(ctx, srcFs, dstFs, file.Name, dir)
 		if err != nil {
 			return nil, err
 		}
 		taeFileList = append(taeFileList, &taeFile{
-			path:     dir + string(os.PathSeparator) + name,
-			size:     files[metaFile.GetIndex()].Size,
+			path:     dir + string(os.PathSeparator) + file.Name,
+			size:     file.Size,
 			checksum: checksum,
 			needCopy: true,
 			ts:       backup,
@@ -512,37 +444,11 @@ func CopyGCDir(
 	return taeFileList, nil
 }
 
-func CopyCheckpointDir(
-	ctx context.Context,
-	srcFs, dstFs fileservice.FileService,
-	dir string, backup types.TS,
-) ([]*taeFile, types.TS, error) {
-	decodeFunc := func(name string) (types.TS, types.TS, string) {
-		start, end := blockio.DecodeCheckpointMetadataFileName(name)
-		return start, end, ""
-	}
-	taeFileList, metaFiles, _, err := copyFileAndGetMetaFiles(ctx, srcFs, dstFs, dir, backup, decodeFunc, true)
-	if err != nil {
-		return nil, types.TS{}, err
-	}
-
-	// minTs is the end of the last global checkpoint, which is needed when copying gc meta
-	minTs := types.TS{}
-	for i := len(metaFiles) - 1; i >= 0; i-- {
-		ckpStart := metaFiles[i].GetStart()
-		if ckpStart.IsEmpty() {
-			minTs = metaFiles[i].GetEnd()
-			break
-		}
-	}
-	return taeFileList, minTs, nil
-}
-
-func CopyFileWithRetry(ctx context.Context, srcFs, dstFs fileservice.FileService, name, dstDir string, newName ...string) ([]byte, error) {
+func CopyFileWithRetry(ctx context.Context, srcFs, dstFs fileservice.FileService, name, dstDir string) ([]byte, error) {
 	return fileservice.DoWithRetry(
 		"CopyFile",
 		func() ([]byte, error) {
-			return CopyFile(ctx, srcFs, dstFs, name, dstDir, newName...)
+			return CopyFile(ctx, srcFs, dstFs, name, dstDir)
 		},
 		64,
 		fileservice.IsRetryableError,
@@ -550,17 +456,10 @@ func CopyFileWithRetry(ctx context.Context, srcFs, dstFs fileservice.FileService
 }
 
 // CopyFile copy file from srcFs to dstFs and return checksum of the written file.
-func CopyFile(ctx context.Context, srcFs, dstFs fileservice.FileService, name, dstDir string, newNames ...string) ([]byte, error) {
-	newName := name
+func CopyFile(ctx context.Context, srcFs, dstFs fileservice.FileService, name, dstDir string) ([]byte, error) {
 	if dstDir != "" {
 		name = path.Join(dstDir, name)
-		if len(newNames) > 0 {
-			newName = path.Join(dstDir, newNames[0])
-		} else {
-			newName = name
-		}
 	}
-
 	var reader io.ReadCloser
 	ioVec := &fileservice.IOVector{
 		FilePath: name,
@@ -583,7 +482,7 @@ func CopyFile(ctx context.Context, srcFs, dstFs fileservice.FileService, name, d
 	hasher := sha256.New()
 	hashingReader := io.TeeReader(reader, hasher)
 	dstIoVec := fileservice.IOVector{
-		FilePath: newName,
+		FilePath: name,
 		Entries: []fileservice.IOEntry{
 			{
 				ReaderForWrite: hashingReader,

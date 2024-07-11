@@ -123,14 +123,9 @@ func (s *Scope) resetForReuse(c *Compile) (err error) {
 		s.Proc.Cancel = cancel
 	}
 
-	for i := 0; i < len(s.Proc.Reg.MergeReceivers); i++ {
-		s.Proc.Reg.MergeReceivers[i].Ctx = s.Proc.Ctx
-		s.Proc.Reg.MergeReceivers[i].CleanChannel(s.Proc.GetMPool())
-	}
-
 	vm.HandleAllOp(s.RootOp, func(parentOp vm.Operator, op vm.Operator) error {
 		if op.GetOperatorBase().Op == vm.Output {
-			op.(*output.Output).Func = c.fill
+			op.(*output.Argument).Func = c.fill
 		}
 		return nil
 	})
@@ -204,15 +199,6 @@ func (s *Scope) Run(c *Compile) (err error) {
 	if s.DataSource.isConst {
 		_, err = p.ConstRun(s.DataSource.Bat, s.Proc)
 	} else {
-		if s.DataSource.R == nil {
-			s.NodeInfo.Data = s.NodeInfo.Data[:0]
-			readers, _, err := s.getReaders(c, 1)
-			if err != nil {
-				return err
-			}
-			s.DataSource.R = readers[0]
-		}
-
 		var tag int32
 		if s.DataSource.node != nil && len(s.DataSource.node.RecvMsgList) > 0 {
 			tag = s.DataSource.node.RecvMsgList[0].MsgTag
@@ -498,21 +484,21 @@ func buildJoinParallelRun(s *Scope, c *Compile) (*Scope, error) {
 		for i := range ns.PreScopes {
 			s := ns.PreScopes[i]
 			switch arg := vm.GetLeafOp(s.RootOp).(type) {
-			case *right.RightJoin:
+			case *right.Argument:
 				arg.Channel = channel
 				arg.NumCPU = uint64(mcpu)
 				if i == 0 {
 					arg.IsMerger = true
 				}
 
-			case *rightsemi.RightSemi:
+			case *rightsemi.Argument:
 				arg.Channel = channel
 				arg.NumCPU = uint64(mcpu)
 				if i == 0 {
 					arg.IsMerger = true
 				}
 
-			case *rightanti.RightAnti:
+			case *rightanti.Argument:
 				arg.Channel = channel
 				arg.NumCPU = uint64(mcpu)
 				if i == 0 {
@@ -644,6 +630,10 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 				case process.RuntimeFilter_PASS:
 					continue
 				case process.RuntimeFilter_DROP:
+					// FIXME: Should give an empty "Data" and then early return
+					s.NodeInfo.Data = nil
+					s.NodeInfo.NeedExpandRanges = false
+					s.DataSource.FilterExpr = plan2.MakeFalseExpr()
 					return nil
 				case process.RuntimeFilter_IN:
 					inExpr := plan2.MakeInExpr(c.proc.Ctx, spec.Expr, msg.Card, msg.Data, spec.MatchPrefix)
@@ -677,10 +667,10 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 		if !isFilterOnPK {
 			// put expr in filter instruction
 			op := vm.GetLeafOp(s.RootOp)
-			if _, ok := op.(*table_scan.TableScan); ok {
+			if _, ok := op.(*table_scan.Argument); ok {
 				op = vm.GetLeafOpParent(nil, s.RootOp)
 			}
-			arg, ok := op.(*filter.Filter)
+			arg, ok := op.(*filter.Argument)
 			if !ok {
 				panic("missing instruction for runtime filter!")
 			}
@@ -708,6 +698,7 @@ func (s *Scope) handleRuntimeFilter(c *Compile) error {
 			return err
 		}
 		s.NodeInfo.Data = append(s.NodeInfo.Data, ranges.GetAllBytes()...)
+		s.NodeInfo.NeedExpandRanges = false
 
 	} else if len(inExprList) > 0 {
 		s.NodeInfo.Data, err = ApplyRuntimeFilters(c.proc.Ctx, s.Proc, s.DataSource.TableDef, s.NodeInfo.Data, exprs, filters)
@@ -723,7 +714,7 @@ func (s *Scope) isShuffle() bool {
 	if s != nil && s.RootOp != nil && s.RootOp.GetOperatorBase().NumChildren() > 0 {
 		op := vm.GetLeafOpParent(nil, s.RootOp)
 		if op.GetOperatorBase().GetOpType() == vm.Group {
-			return op.(*group.Group).IsShuffle
+			return op.(*group.Argument).IsShuffle
 		}
 	}
 	return false
@@ -755,7 +746,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 		switch opBase.Op {
 		case vm.Top:
 			flg = true
-			arg := op.(*top.Top)
+			arg := op.(*top.Argument)
 			toReleaseOpRoot = arg.GetChildren(0)
 			// release the useless arg
 			newArg := mergetop.NewArgument().
@@ -794,7 +785,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 		// there is no need to do special merge for order, because the behavior of order is just sort for each batch.
 		case vm.Limit:
 			flg = true
-			arg := op.(*limit.Limit)
+			arg := op.(*limit.Argument)
 			toReleaseOpRoot = arg.GetChildren(0)
 			newArg := mergelimit.NewArgument().
 				WithLimit(arg.LimitExpr)
@@ -829,7 +820,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 			arg.Release()
 		case vm.Group:
 			flg = true
-			arg := op.(*group.Group)
+			arg := op.(*group.Argument)
 			toReleaseOpRoot = arg.GetChildren(0)
 			if arg.AnyDistinctAgg() {
 				return nil
@@ -869,7 +860,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 			}
 			arg.Release()
 		case vm.Sample:
-			arg := op.(*sample.Sample)
+			arg := op.(*sample.Argument)
 			if !arg.IsMergeSampleByRow() {
 				flg = true
 				toReleaseOpRoot = arg.GetChildren(0)
@@ -924,7 +915,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 						Op:      vm.Sample,
 						Idx:     arg.Idx,
 						IsFirst: arg.IsFirst,
-						Arg:     arg.SampleDup(),
+						Arg:     arg.SimpleDup(),
 
 						CnAddr:      arg.CnAddr,
 						OperatorID:  arg.OperatorID,
@@ -937,7 +928,7 @@ func newParallelScope(c *Compile, s *Scope, ss []*Scope) (*Scope, error) {
 
 		case vm.Offset:
 			flg = true
-			arg := op.(*offset.Offset)
+			arg := op.(*offset.Argument)
 			toReleaseOpRoot = arg.GetChildren(0)
 			newArg := mergeoffset.NewArgument().
 				WithOffset(arg.OffsetExpr)

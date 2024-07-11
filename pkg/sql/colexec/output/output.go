@@ -21,29 +21,29 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "output"
+const argName = "output"
 
-func (output *Output) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": sql output")
 }
 
-func (output *Output) Prepare(_ *process.Process) error {
+func (arg *Argument) Prepare(_ *process.Process) error {
 	return nil
 }
 
-func (output *Output) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	ap := output
-	result, err := output.GetChildren(0).Call(proc)
+	ap := arg
+	result, err := arg.GetChildren(0).Call(proc)
 	if err != nil {
 		return result, err
 	}
 
-	anal := proc.GetAnalyze(output.GetIdx(), output.GetParallelIdx(), output.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 

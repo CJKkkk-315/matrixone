@@ -21,19 +21,19 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "value_scan"
+const argName = "value_scan"
 
-func (valueScan *ValueScan) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": value_scan ")
 }
 
-func (valueScan *ValueScan) Prepare(proc *process.Process) (err error) {
-	valueScan.ctr = new(container)
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	arg.ctr = new(container)
 	return nil
 }
 
-func (valueScan *ValueScan) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
@@ -47,13 +47,13 @@ func (valueScan *ValueScan) Call(proc *process.Process) (vm.CallResult, error) {
 	//default:
 	//}
 
-	if valueScan.ctr.idx < len(valueScan.Batchs) {
-		result.Batch = valueScan.Batchs[valueScan.ctr.idx]
-		if valueScan.ctr.idx > 0 {
-			proc.PutBatch(valueScan.Batchs[valueScan.ctr.idx-1])
-			valueScan.Batchs[valueScan.ctr.idx-1] = nil
+	if arg.ctr.idx < len(arg.Batchs) {
+		result.Batch = arg.Batchs[arg.ctr.idx]
+		if arg.ctr.idx > 0 {
+			proc.PutBatch(arg.Batchs[arg.ctr.idx-1])
+			arg.Batchs[arg.ctr.idx-1] = nil
 		}
-		valueScan.ctr.idx += 1
+		arg.ctr.idx += 1
 	}
 
 	return result, nil

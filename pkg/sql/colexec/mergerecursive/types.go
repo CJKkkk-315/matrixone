@@ -23,7 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeRecursive)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	colexec.ReceiverOperator
@@ -32,60 +32,60 @@ type container struct {
 	last bool
 }
 
-type MergeRecursive struct {
+type Argument struct {
 	ctr *container
 
 	vm.OperatorBase
 }
 
-func (mergeRecursive *MergeRecursive) GetOperatorBase() *vm.OperatorBase {
-	return &mergeRecursive.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeRecursive](
-		func() *MergeRecursive {
-			return &MergeRecursive{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeRecursive) {
-			*a = MergeRecursive{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeRecursive]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeRecursive MergeRecursive) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeRecursive {
-	return reuse.Alloc[MergeRecursive](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeRecursive *MergeRecursive) Release() {
-	if mergeRecursive != nil {
-		reuse.Free[MergeRecursive](mergeRecursive, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeRecursive *MergeRecursive) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeRecursive.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeRecursive *MergeRecursive) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if mergeRecursive.ctr != nil {
-		mergeRecursive.ctr.FreeMergeTypeOperator(pipelineFailed)
-		for _, b := range mergeRecursive.ctr.bats {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		arg.ctr.FreeMergeTypeOperator(pipelineFailed)
+		for _, b := range arg.ctr.bats {
 			if b != nil {
 				b.Clean(proc.Mp())
 			}
-			mergeRecursive.ctr.bats = nil
+			arg.ctr.bats = nil
 		}
-		if mergeRecursive.ctr.buf != nil {
-			mergeRecursive.ctr.buf.Clean(proc.Mp())
-			mergeRecursive.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		mergeRecursive.ctr = nil
+		arg.ctr = nil
 	}
 }

@@ -26,26 +26,26 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "table_function"
+const argName = "table_function"
 
-func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	tblArg := tableFunction
+	tblArg := arg
 	var (
 		f bool
 		e error
 	)
-	idx := tableFunction.GetIdx()
+	idx := arg.GetIdx()
 
-	result, err := tableFunction.GetChildren(0).Call(proc)
+	result, err := arg.GetChildren(0).Call(proc)
 	if err != nil {
 		return result, err
 	}
 
-	anal := proc.GetAnalyze(tableFunction.GetIdx(), tableFunction.GetParallelIdx(), tableFunction.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 
@@ -82,25 +82,25 @@ func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, 
 		return result, e
 	}
 
-	if tableFunction.ctr.buf != nil {
-		proc.PutBatch(tableFunction.ctr.buf)
-		tableFunction.ctr.buf = nil
+	if arg.ctr.buf != nil {
+		proc.PutBatch(arg.ctr.buf)
+		arg.ctr.buf = nil
 	}
-	tableFunction.ctr.buf = result.Batch
-	if tableFunction.ctr.buf == nil {
+	arg.ctr.buf = result.Batch
+	if arg.ctr.buf == nil {
 		result.Status = vm.ExecStop
 		return result, e
 	}
-	if tableFunction.ctr.buf.IsEmpty() {
+	if arg.ctr.buf.IsEmpty() {
 		return result, e
 	}
 
-	if tableFunction.ctr.buf.VectorCount() != len(tblArg.ctr.retSchema) {
+	if arg.ctr.buf.VectorCount() != len(tblArg.ctr.retSchema) {
 		result.Status = vm.ExecStop
 		return result, moerr.NewInternalError(proc.Ctx, "table function %s return length mismatch", tblArg.FuncName)
 	}
 	for i := range tblArg.ctr.retSchema {
-		if tableFunction.ctr.buf.GetVector(int32(i)).GetType().Oid != tblArg.ctr.retSchema[i].Oid {
+		if arg.ctr.buf.GetVector(int32(i)).GetType().Oid != tblArg.ctr.retSchema[i].Oid {
 			result.Status = vm.ExecStop
 			return result, moerr.NewInternalError(proc.Ctx, "table function %s return type mismatch", tblArg.FuncName)
 		}
@@ -113,13 +113,13 @@ func (tableFunction *TableFunction) Call(proc *process.Process) (vm.CallResult, 
 	return result, e
 }
 
-func (tableFunction *TableFunction) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
-	buf.WriteString(tableFunction.FuncName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
+	buf.WriteString(arg.FuncName)
 }
 
-func (tableFunction *TableFunction) Prepare(proc *process.Process) error {
-	tblArg := tableFunction
+func (arg *Argument) Prepare(proc *process.Process) error {
+	tblArg := arg
 	tblArg.ctr = new(container)
 
 	retSchema := make([]types.Type, len(tblArg.Rets))

@@ -25,23 +25,23 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "table_scan"
+const argName = "table_scan"
 
-func (tableScan *TableScan) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": table_scan ")
 }
 
-func (tableScan *TableScan) Prepare(proc *process.Process) (err error) {
-	tableScan.ctr = new(container)
-	tableScan.ctr.orderBy = tableScan.Reader.GetOrderBy()
-	if tableScan.TopValueMsgTag > 0 {
-		tableScan.ctr.msgReceiver = proc.NewMessageReceiver([]int32{tableScan.TopValueMsgTag}, tableScan.GetAddress())
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	arg.ctr = new(container)
+	arg.ctr.orderBy = arg.Reader.GetOrderBy()
+	if arg.TopValueMsgTag > 0 {
+		arg.ctr.msgReceiver = proc.NewMessageReceiver([]int32{arg.TopValueMsgTag}, arg.GetAddress())
 	}
 	return nil
 }
 
-func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	var e error
 	start := time.Now()
 	txnOp := proc.GetTxnOperator()
@@ -54,11 +54,11 @@ func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
 		txnOp,
 		client.TableScanEvent,
 		seq,
-		tableScan.TableID,
+		arg.TableID,
 		0,
 		nil)
 
-	anal := proc.GetAnalyze(tableScan.GetIdx(), tableScan.GetParallelIdx(), tableScan.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer func() {
 		anal.Stop()
@@ -69,7 +69,7 @@ func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
 			txnOp,
 			client.TableScanEvent,
 			seq,
-			tableScan.TableID,
+			arg.TableID,
 			cost,
 			e)
 		v2.TxnStatementScanDurationHistogram.Observe(cost.Seconds())
@@ -88,25 +88,25 @@ func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
 		return vm.CancelResult, err
 	}
 
-	if tableScan.ctr.buf != nil {
-		proc.PutBatch(tableScan.ctr.buf)
-		tableScan.ctr.buf = nil
+	if arg.ctr.buf != nil {
+		proc.PutBatch(arg.ctr.buf)
+		arg.ctr.buf = nil
 	}
 
 	for {
 		// receive topvalue message
-		if tableScan.ctr.msgReceiver != nil {
-			msgs, _ := tableScan.ctr.msgReceiver.ReceiveMessage(false, proc.Ctx)
+		if arg.ctr.msgReceiver != nil {
+			msgs, _ := arg.ctr.msgReceiver.ReceiveMessage(false, proc.Ctx)
 			for i := range msgs {
 				msg, ok := msgs[i].(process.TopValueMessage)
 				if !ok {
 					panic("only support top value message in table scan!")
 				}
-				tableScan.Reader.SetFilterZM(msg.TopValueZM)
+				arg.Reader.SetFilterZM(msg.TopValueZM)
 			}
 		}
 		// read data from storage engine
-		bat, err := tableScan.Reader.Read(proc.Ctx, tableScan.Attrs, nil, proc.Mp(), proc)
+		bat, err := arg.Reader.Read(proc.Ctx, arg.Attrs, nil, proc.Mp(), proc)
 		if err != nil {
 			result.Status = vm.ExecStop
 			e = err
@@ -126,20 +126,20 @@ func (tableScan *TableScan) Call(proc *process.Process) (vm.CallResult, error) {
 		trace.GetService().TxnRead(
 			proc.GetTxnOperator(),
 			proc.GetTxnOperator().Txn().SnapshotTS,
-			tableScan.TableID,
-			tableScan.Attrs,
+			arg.TableID,
+			arg.Attrs,
 			bat)
 
 		bat.Cnt = 1
 		anal.InputBlock()
 		anal.S3IOByte(bat)
 		batSize := bat.Size()
-		tableScan.ctr.maxAllocSize = max(tableScan.ctr.maxAllocSize, batSize)
+		arg.ctr.maxAllocSize = max(arg.ctr.maxAllocSize, batSize)
 
-		tableScan.ctr.buf = bat
+		arg.ctr.buf = bat
 		break
 	}
 
-	result.Batch = tableScan.ctr.buf
+	result.Batch = arg.ctr.buf
 	return result, nil
 }

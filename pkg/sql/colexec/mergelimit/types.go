@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeLimit)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	colexec.ReceiverOperator
@@ -34,7 +34,7 @@ type container struct {
 	limitExecutor colexec.ExpressionExecutor
 }
 
-type MergeLimit struct {
+type Argument struct {
 	// Limit records the limit number of this operator
 	Limit *plan.Expr
 	// ctr stores the attributes needn't do Serialization work
@@ -42,58 +42,58 @@ type MergeLimit struct {
 	vm.OperatorBase
 }
 
-func (mergeLimit *MergeLimit) GetOperatorBase() *vm.OperatorBase {
-	return &mergeLimit.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeLimit](
-		func() *MergeLimit {
-			return &MergeLimit{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeLimit) {
-			*a = MergeLimit{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeLimit]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeLimit MergeLimit) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeLimit {
-	return reuse.Alloc[MergeLimit](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeLimit *MergeLimit) WithLimit(limit *plan.Expr) *MergeLimit {
-	mergeLimit.Limit = limit
-	return mergeLimit
+func (arg *Argument) WithLimit(limit *plan.Expr) *Argument {
+	arg.Limit = limit
+	return arg
 }
 
-func (mergeLimit *MergeLimit) Release() {
-	if mergeLimit != nil {
-		reuse.Free[MergeLimit](mergeLimit, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeLimit *MergeLimit) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeLimit.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeLimit *MergeLimit) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if mergeLimit.ctr != nil {
-		mergeLimit.ctr.FreeMergeTypeOperator(pipelineFailed)
-		if mergeLimit.ctr.limitExecutor != nil {
-			mergeLimit.ctr.limitExecutor.Free()
-			mergeLimit.ctr.limitExecutor = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		arg.ctr.FreeMergeTypeOperator(pipelineFailed)
+		if arg.ctr.limitExecutor != nil {
+			arg.ctr.limitExecutor.Free()
+			arg.ctr.limitExecutor = nil
 		}
-		if mergeLimit.ctr.buf != nil {
-			mergeLimit.ctr.buf.Clean(proc.Mp())
-			mergeLimit.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		mergeLimit.ctr = nil
+		arg.ctr = nil
 	}
 
 }

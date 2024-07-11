@@ -39,8 +39,8 @@ const (
 
 // add unit tests for cases
 type buildTestCase struct {
-	arg    *HashBuild
-	marg   *merge.Merge
+	arg    *Argument
+	marg   *merge.Argument
 	flgs   []bool // flgs[i] == true: nullable
 	types  []types.Type
 	proc   *process.Process
@@ -173,7 +173,7 @@ func newTestCase(flgs []bool, ts []types.Type, cs []*plan.Expr) buildTestCase {
 		flgs:   flgs,
 		proc:   proc,
 		cancel: cancel,
-		arg: &HashBuild{
+		arg: &Argument{
 			Typs:        ts,
 			Conditions:  cs,
 			NeedHashMap: true,
@@ -185,7 +185,7 @@ func newTestCase(flgs []bool, ts []types.Type, cs []*plan.Expr) buildTestCase {
 				},
 			},
 		},
-		marg: &merge.Merge{},
+		marg: &merge.Argument{},
 	}
 }
 

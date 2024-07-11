@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Window)
+var _ vm.Operator = new(Argument)
 
 const (
 	receive = iota
@@ -52,7 +52,7 @@ type container struct {
 	aggVecs []group.ExprEvalVector
 }
 
-type Window struct {
+type Argument struct {
 	ctr         *container
 	WinSpecList []*plan.Expr
 	// sort and partition
@@ -64,50 +64,50 @@ type Window struct {
 	vm.OperatorBase
 }
 
-func (window *Window) GetOperatorBase() *vm.OperatorBase {
-	return &window.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Window](
-		func() *Window {
-			return &Window{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Window) {
-			*a = Window{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Window]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (window Window) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Window {
-	return reuse.Alloc[Window](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (window *Window) Release() {
-	if window != nil {
-		reuse.Free[Window](window, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (window *Window) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	window.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (window *Window) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := window.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.FreeMergeTypeOperator(pipelineFailed)
 		ctr.cleanBatch(mp)
 		ctr.cleanAggVectors()
 		ctr.cleanOrderVectors()
-		window.ctr = nil
+		arg.ctr = nil
 	}
 }
 

@@ -41,13 +41,13 @@ const (
 
 // add unit tests for cases
 type joinTestCase struct {
-	arg    *LoopJoin
+	arg    *Argument
 	flgs   []bool // flgs[i] == true: nullable
 	types  []types.Type
 	proc   *process.Process
 	cancel context.CancelFunc
-	barg   *hashbuild.HashBuild
-	marg   *merge.Merge
+	barg   *hashbuild.Argument
+	marg   *merge.Argument
 }
 
 var (
@@ -194,7 +194,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos) joinTestC
 		flgs:   flgs,
 		proc:   proc,
 		cancel: cancel,
-		arg: &LoopJoin{
+		arg: &Argument{
 			Typs:   ts,
 			Cond:   cond,
 			Result: rp,
@@ -206,7 +206,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos) joinTestC
 				},
 			},
 		},
-		barg: &hashbuild.HashBuild{
+		barg: &hashbuild.Argument{
 			Typs: ts,
 			OperatorBase: vm.OperatorBase{
 				OperatorInfo: vm.OperatorInfo{
@@ -216,7 +216,7 @@ func newTestCase(flgs []bool, ts []types.Type, rp []colexec.ResultPos) joinTestC
 				},
 			},
 		},
-		marg: &merge.Merge{},
+		marg: &merge.Argument{},
 	}
 }
 

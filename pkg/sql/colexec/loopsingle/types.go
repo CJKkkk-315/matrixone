@@ -26,7 +26,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(LoopSingle)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -45,7 +45,7 @@ type container struct {
 	cfs     []func(*vector.Vector, *vector.Vector, int64, int) error
 }
 
-type LoopSingle struct {
+type Argument struct {
 	ctr    *container
 	Cond   *plan.Expr
 	Typs   []types.Type
@@ -54,47 +54,47 @@ type LoopSingle struct {
 	vm.OperatorBase
 }
 
-func (loopSingle *LoopSingle) GetOperatorBase() *vm.OperatorBase {
-	return &loopSingle.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[LoopSingle](
-		func() *LoopSingle {
-			return &LoopSingle{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *LoopSingle) {
-			*a = LoopSingle{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[LoopSingle]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (loopSingle LoopSingle) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *LoopSingle {
-	return reuse.Alloc[LoopSingle](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (loopSingle *LoopSingle) Release() {
-	if loopSingle != nil {
-		reuse.Free[LoopSingle](loopSingle, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (loopSingle *LoopSingle) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	loopSingle.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (loopSingle *LoopSingle) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if ctr := loopSingle.ctr; ctr != nil {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if ctr := arg.ctr; ctr != nil {
 		ctr.cleanBatch(proc.Mp())
 		ctr.cleanExprExecutor()
 		ctr.FreeAllReg()
-		loopSingle.ctr = nil
+		arg.ctr = nil
 	}
 }
 

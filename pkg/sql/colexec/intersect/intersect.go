@@ -23,58 +23,58 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "intersect"
+const argName = "intersect"
 
-func (intersect *Intersect) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": intersect ")
 }
 
-func (intersect *Intersect) Prepare(proc *process.Process) error {
+func (arg *Argument) Prepare(proc *process.Process) error {
 	var err error
 
-	intersect.ctr = new(container)
-	intersect.ctr.InitReceiver(proc, false)
-	intersect.ctr.btc = nil
-	intersect.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp())
+	arg.ctr = new(container)
+	arg.ctr.InitReceiver(proc, false)
+	arg.ctr.btc = nil
+	arg.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp())
 	if err != nil {
 		return err
 	}
-	intersect.ctr.inBuckets = make([]uint8, hashmap.UnitLimit)
+	arg.ctr.inBuckets = make([]uint8, hashmap.UnitLimit)
 	return nil
 }
 
-func (intersect *Intersect) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	analyze := proc.GetAnalyze(intersect.GetIdx(), intersect.GetParallelIdx(), intersect.GetParallelMajor())
+	analyze := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	analyze.Start()
 	defer analyze.Stop()
 
 	result := vm.NewCallResult()
 
 	for {
-		switch intersect.ctr.state {
+		switch arg.ctr.state {
 		case build:
-			if err := intersect.ctr.buildHashTable(proc, analyze, 1, intersect.GetIsFirst()); err != nil {
+			if err := arg.ctr.buildHashTable(proc, analyze, 1, arg.GetIsFirst()); err != nil {
 				return result, err
 			}
-			if intersect.ctr.hashTable != nil {
-				analyze.Alloc(intersect.ctr.hashTable.Size())
+			if arg.ctr.hashTable != nil {
+				analyze.Alloc(arg.ctr.hashTable.Size())
 			}
-			intersect.ctr.state = probe
+			arg.ctr.state = probe
 
 		case probe:
 			var err error
 			isLast := false
-			if isLast, err = intersect.ctr.probeHashTable(proc, analyze, 0, intersect.GetIsFirst(), intersect.GetIsLast(), &result); err != nil {
+			if isLast, err = arg.ctr.probeHashTable(proc, analyze, 0, arg.GetIsFirst(), arg.GetIsLast(), &result); err != nil {
 				result.Status = vm.ExecStop
 				return result, err
 			}
 			if isLast {
-				intersect.ctr.state = end
+				arg.ctr.state = end
 				continue
 			}
 

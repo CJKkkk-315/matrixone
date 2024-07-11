@@ -234,12 +234,9 @@ func (c *checkpointCleaner) Replay() error {
 	}
 	ckp := checkpoint.NewCheckpointEntry(maxConsumedStart, maxConsumedEnd, checkpoint.ET_Incremental)
 	c.updateMaxConsumed(ckp)
-	defer func() {
-		// Ensure that updateMinMerged is executed last, because minMergedEnd is not empty means that the replay is completed
-		// For UT
-		ckp = checkpoint.NewCheckpointEntry(minMergedStart, minMergedEnd, checkpoint.ET_Incremental)
-		c.updateMinMerged(ckp)
-	}()
+	ckp = checkpoint.NewCheckpointEntry(minMergedStart, minMergedEnd, checkpoint.ET_Incremental)
+	c.updateMinMerged(ckp)
+
 	if acctFile != "" {
 		err = c.snapshotMeta.ReadTableInfo(c.ctx, GCMetaDir+acctFile, c.fs.Service)
 		if err != nil {
@@ -250,7 +247,7 @@ func (c *checkpointCleaner) Replay() error {
 		//and the table information needs to be initialized from the checkpoint
 		maxConsumed := c.maxConsumed.Load()
 		isConsumedGCkp := false
-		checkpointEntries, err := checkpoint.ListSnapshotCheckpoint(c.ctx, c.fs.Service, maxConsumed.GetEnd(), 0, checkpoint.SpecifiedCheckpoint)
+		checkpointEntries, err := checkpoint.ListSnapshotCheckpoint(c.ctx, c.fs.Service, ckp.GetEnd(), 0, checkpoint.SpecifiedCheckpoint)
 		if err != nil {
 			logutil.Warnf("list checkpoint failed, err[%v]", err)
 		}

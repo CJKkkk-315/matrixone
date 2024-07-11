@@ -125,7 +125,7 @@ func receiveMessageFromCnServer(c *Compile, s *Scope, sender *messageSenderOnCli
 	LastOperator := s.RootOp
 	lastAnalyze := c.proc.GetAnalyze(LastOperator.GetOperatorBase().GetIdx(), -1, false)
 	switch arg := LastOperator.(type) {
-	case *connector.Connector:
+	case *connector.Argument:
 		oldChildren := arg.Children
 		arg.Children = nil
 		arg.AppendChild(fakeValueScanOperator)
@@ -133,7 +133,7 @@ func receiveMessageFromCnServer(c *Compile, s *Scope, sender *messageSenderOnCli
 			arg.Children = oldChildren
 		}()
 
-	case *dispatch.Dispatch:
+	case *dispatch.Argument:
 		oldChildren := arg.Children
 		arg.Children = nil
 		arg.AppendChild(fakeValueScanOperator)

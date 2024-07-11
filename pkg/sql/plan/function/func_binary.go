@@ -2675,25 +2675,19 @@ func MakeDateString(
 			}
 		} else {
 			// null
-			yearStrStr := functionUtil.QuickBytesToStr(yearStr)
-			year, err := strconv.ParseInt(yearStrStr, 10, 64)
+			year, err := strconv.ParseInt(functionUtil.QuickBytesToStr(yearStr), 10, 64)
 			if err != nil {
-				yearFloat, err := strconv.ParseFloat(yearStrStr, 64)
-				if err != nil {
-					year = castBinaryArrayToInt(yearStr)
-				} else {
-					year = int64(yearFloat)
+				if err := rs.AppendBytes(nil, true); err != nil {
+					return err
 				}
+				continue
 			}
 			day, err := strconv.ParseInt(functionUtil.QuickBytesToStr(dayStr), 10, 64)
 			if err != nil {
-				// parse as float64
-				dayFloat, err := strconv.ParseFloat(functionUtil.QuickBytesToStr(dayStr), 64)
-				if err != nil {
-					day = castBinaryArrayToInt(dayStr)
-				} else {
-					day = int64(dayFloat)
+				if err := rs.AppendBytes(nil, true); err != nil {
+					return err
 				}
+				continue
 			}
 			if day <= 0 || year < 0 || year > 9999 {
 				if err := rs.AppendBytes(nil, true); err != nil {
@@ -3016,12 +3010,4 @@ func CosineDistanceArray[T types.RealNumbers](ivecs []*vector.Vector, result vec
 		_v2 := types.BytesToArray[T](v2)
 		return moarray.CosineDistance[T](_v1, _v2)
 	}, selectList)
-}
-
-func castBinaryArrayToInt(array []uint8) int64 {
-	var result int64
-	for i, value := range array {
-		result += int64(value) << uint(8*(len(array)-i-1))
-	}
-	return result
 }

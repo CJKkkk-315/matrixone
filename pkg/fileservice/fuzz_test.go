@@ -212,12 +212,9 @@ func TestFuzzingDiskS3(t *testing.T) {
 			done := make(chan struct{})
 
 			numCPU := runtime.GOMAXPROCS(0)
-			wg := new(sync.WaitGroup)
 			for i := 0; i < numCPU; i++ {
 				i := i
-				wg.Add(1)
 				go func() {
-					defer wg.Done()
 					t.Run(fmt.Sprintf("proc %v", i), func(t *testing.T) {
 						for {
 							select {
@@ -233,7 +230,6 @@ func TestFuzzingDiskS3(t *testing.T) {
 
 			<-time.After(time.Second * 5)
 			close(done)
-			wg.Wait()
 
 		},
 	)

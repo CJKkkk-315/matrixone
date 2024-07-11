@@ -25,14 +25,14 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Partition)
+var _ vm.Operator = new(Argument)
 
 const (
 	receive = iota
 	eval
 )
 
-type Partition struct {
+type Argument struct {
 	ctr *container
 
 	OrderBySpecs []*plan.OrderBySpec
@@ -40,34 +40,34 @@ type Partition struct {
 	vm.OperatorBase
 }
 
-func (partition *Partition) GetOperatorBase() *vm.OperatorBase {
-	return &partition.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Partition](
-		func() *Partition {
-			return &Partition{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Partition) {
-			*a = Partition{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Partition]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (partition Partition) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Partition {
-	return reuse.Alloc[Partition](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (partition *Partition) Release() {
-	if partition != nil {
-		reuse.Free[Partition](partition, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -90,12 +90,12 @@ type container struct {
 	buf *batch.Batch
 }
 
-func (partition *Partition) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	partition.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (partition *Partition) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if ctr := partition.ctr; ctr != nil {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if ctr := arg.ctr; ctr != nil {
 		mp := proc.Mp()
 
 		for i := range ctr.batchList {
@@ -125,6 +125,6 @@ func (partition *Partition) Free(proc *process.Process, pipelineFailed bool, err
 			ctr.buf = nil
 		}
 
-		partition.ctr = nil
+		arg.ctr = nil
 	}
 }

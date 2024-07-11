@@ -22,36 +22,36 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "merge"
+const argName = "merge"
 
-func (merge *Merge) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": union all ")
 }
 
-func (merge *Merge) Prepare(proc *process.Process) error {
-	merge.ctr = new(container)
-	merge.ctr.InitReceiver(proc, true)
+func (arg *Argument) Prepare(proc *process.Process) error {
+	arg.ctr = new(container)
+	arg.ctr.InitReceiver(proc, true)
 	return nil
 }
 
-func (merge *Merge) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	anal := proc.GetAnalyze(merge.GetIdx(), merge.GetParallelIdx(), merge.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 	var msg *process.RegisterMessage
 	result := vm.NewCallResult()
-	if merge.ctr.buf != nil {
-		proc.PutBatch(merge.ctr.buf)
-		merge.ctr.buf = nil
+	if arg.ctr.buf != nil {
+		proc.PutBatch(arg.ctr.buf)
+		arg.ctr.buf = nil
 	}
 
 	for {
-		msg = merge.ctr.ReceiveFromAllRegs(anal)
+		msg = arg.ctr.ReceiveFromAllRegs(anal)
 		if msg.Err != nil {
 			result.Status = vm.ExecStop
 			return result, msg.Err
@@ -61,16 +61,16 @@ func (merge *Merge) Call(proc *process.Process) (vm.CallResult, error) {
 			return result, nil
 		}
 
-		merge.ctr.buf = msg.Batch
-		if merge.ctr.buf.Last() && merge.SinkScan {
-			proc.PutBatch(merge.ctr.buf)
+		arg.ctr.buf = msg.Batch
+		if arg.ctr.buf.Last() && arg.SinkScan {
+			proc.PutBatch(arg.ctr.buf)
 			continue
 		}
 		break
 	}
 
-	anal.Input(merge.ctr.buf, merge.GetIsFirst())
-	anal.Output(merge.ctr.buf, merge.GetIsLast())
-	result.Batch = merge.ctr.buf
+	anal.Input(arg.ctr.buf, arg.GetIsFirst())
+	anal.Output(arg.ctr.buf, arg.GetIsLast())
+	result.Batch = arg.ctr.buf
 	return result, nil
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MarkJoin)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -122,7 +122,7 @@ type container struct {
 // remember that we may use partition stragey, for example, if the origin table has data squence
 // like 1,2,3,4. If we use the hash method, after using hash function,assume that we get 13,14,15,16.
 // and we divide them into 3 buckets. so 13%3 = 1,so 3 is in the 1-th bucket and so on like this
-type MarkJoin struct {
+type Argument struct {
 	// container means the local parameters defined by the operator constructor
 	ctr *container
 	// the five attributes below are passed by the outside
@@ -159,43 +159,43 @@ type MarkJoin struct {
 	vm.OperatorBase
 }
 
-func (markJoin *MarkJoin) GetOperatorBase() *vm.OperatorBase {
-	return &markJoin.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MarkJoin](
-		func() *MarkJoin {
-			return &MarkJoin{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MarkJoin) {
-			*a = MarkJoin{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MarkJoin]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (markJoin MarkJoin) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MarkJoin {
-	return reuse.Alloc[MarkJoin](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (markJoin *MarkJoin) Release() {
-	if markJoin != nil {
-		reuse.Free[MarkJoin](markJoin, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (markJoin *MarkJoin) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	markJoin.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (markJoin *MarkJoin) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := markJoin.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.cleanBatch(mp)
@@ -205,9 +205,9 @@ func (markJoin *MarkJoin) Free(proc *process.Process, pipelineFailed bool, err e
 		ctr.cleanExprExecutor()
 		ctr.FreeAllReg()
 
-		anal := proc.GetAnalyze(markJoin.GetIdx(), markJoin.GetParallelIdx(), markJoin.GetParallelMajor())
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 		anal.Alloc(ctr.maxAllocSize)
-		markJoin.ctr = nil
+		arg.ctr = nil
 	}
 }
 

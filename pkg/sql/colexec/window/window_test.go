@@ -16,9 +16,8 @@ package window
 
 import (
 	"bytes"
-	"testing"
-
 	"github.com/matrixorigin/matrixone/pkg/sql/colexec/aggexec"
+	"testing"
 
 	"github.com/matrixorigin/matrixone/pkg/common/mpool"
 	"github.com/matrixorigin/matrixone/pkg/vm"
@@ -31,7 +30,7 @@ import (
 
 // add unit tests for cases
 type winTestCase struct {
-	arg  *Window
+	arg  *Argument
 	flgs []bool // flgs[i] == true: nullable
 	proc *process.Process
 }
@@ -118,7 +117,7 @@ func newTestCase(flgs []bool, ts []types.Type, exprs []*plan.Expr, aggs []aggexe
 	return winTestCase{
 		flgs: flgs,
 		proc: testutil.NewProcessWithMPool(mpool.MustNewZero()),
-		arg: &Window{
+		arg: &Argument{
 			WinSpecList: exprs,
 			Types:       ts,
 			Aggs:        aggs,

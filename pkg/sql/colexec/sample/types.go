@@ -33,9 +33,9 @@ const (
 	mergeSampleByRow
 )
 
-var _ vm.Operator = new(Sample)
+var _ vm.Operator = new(Argument)
 
-type Sample struct {
+type Argument struct {
 	ctr *container
 
 	// it determines which sample action (random sample by rows / percents, sample by order and so on) to take.
@@ -58,8 +58,8 @@ type Sample struct {
 	vm.OperatorBase
 }
 
-func (sample *Sample) GetOperatorBase() *vm.OperatorBase {
-	return &sample.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 type container struct {
@@ -88,33 +88,33 @@ type container struct {
 }
 
 func init() {
-	reuse.CreatePool[Sample](
-		func() *Sample {
-			return &Sample{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Sample) {
-			*a = Sample{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Sample]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (sample Sample) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Sample {
-	return reuse.Alloc[Sample](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (sample *Sample) Release() {
-	if sample != nil {
-		reuse.Free[Sample](sample, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func NewMergeSample(rowSampleArg *Sample, outputRowCount bool) *Sample {
+func NewMergeSample(rowSampleArg *Argument, outputRowCount bool) *Argument {
 	if rowSampleArg.Type != sampleByRow {
 		panic("invalid sample type to merge")
 	}
@@ -155,7 +155,7 @@ func NewMergeSample(rowSampleArg *Sample, outputRowCount bool) *Sample {
 	return arg
 }
 
-func NewSampleByRows(rows int, sampleExprs, groupExprs []*plan.Expr, usingRow bool, outputRowCount bool) *Sample {
+func NewSampleByRows(rows int, sampleExprs, groupExprs []*plan.Expr, usingRow bool, outputRowCount bool) *Argument {
 	arg := NewArgument()
 	arg.Type = sampleByRow
 	arg.UsingBlock = !usingRow
@@ -166,7 +166,7 @@ func NewSampleByRows(rows int, sampleExprs, groupExprs []*plan.Expr, usingRow bo
 	return arg
 }
 
-func NewSampleByPercent(percent float64, sampleExprs, groupExprs []*plan.Expr) *Sample {
+func NewSampleByPercent(percent float64, sampleExprs, groupExprs []*plan.Expr) *Argument {
 	arg := NewArgument()
 	arg.Type = sampleByPercent
 	arg.UsingBlock = false
@@ -177,89 +177,89 @@ func NewSampleByPercent(percent float64, sampleExprs, groupExprs []*plan.Expr) *
 	return arg
 }
 
-func (sample *Sample) IsMergeSampleByRow() bool {
-	return sample.Type == mergeSampleByRow
+func (arg *Argument) IsMergeSampleByRow() bool {
+	return arg.Type == mergeSampleByRow
 }
 
-func (sample *Sample) IsByPercent() bool {
-	return sample.Type == sampleByPercent
+func (arg *Argument) IsByPercent() bool {
+	return arg.Type == sampleByPercent
 }
 
-func (sample *Sample) SampleDup() *Sample {
+func (arg *Argument) SimpleDup() *Argument {
 	a := NewArgument()
-	a.Type = sample.Type
-	a.UsingBlock = sample.UsingBlock
-	a.NeedOutputRowSeen = sample.NeedOutputRowSeen
-	a.Rows = sample.Rows
-	a.Percents = sample.Percents
-	a.SampleExprs = sample.SampleExprs
-	a.GroupExprs = sample.GroupExprs
+	a.Type = arg.Type
+	a.UsingBlock = arg.UsingBlock
+	a.NeedOutputRowSeen = arg.NeedOutputRowSeen
+	a.Rows = arg.Rows
+	a.Percents = arg.Percents
+	a.SampleExprs = arg.SampleExprs
+	a.GroupExprs = arg.GroupExprs
 	return a
 }
 
-func (sample *Sample) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	sample.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (sample *Sample) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if sample.ctr != nil {
-		if sample.ctr.intHashMap != nil {
-			sample.ctr.intHashMap.Free()
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		if arg.ctr.intHashMap != nil {
+			arg.ctr.intHashMap.Free()
 		}
-		if sample.ctr.strHashMap != nil {
-			sample.ctr.strHashMap.Free()
+		if arg.ctr.strHashMap != nil {
+			arg.ctr.strHashMap.Free()
 		}
-		for _, executor := range sample.ctr.sampleExecutors {
+		for _, executor := range arg.ctr.sampleExecutors {
 			if executor != nil {
 				executor.Free()
 			}
 		}
-		sample.ctr.sampleExecutors = nil
+		arg.ctr.sampleExecutors = nil
 
-		for _, executor := range sample.ctr.groupExecutors {
+		for _, executor := range arg.ctr.groupExecutors {
 			if executor != nil {
 				executor.Free()
 			}
 		}
-		sample.ctr.groupExecutors = nil
+		arg.ctr.groupExecutors = nil
 
-		if sample.ctr.samplePool != nil {
-			sample.ctr.samplePool.Free()
+		if arg.ctr.samplePool != nil {
+			arg.ctr.samplePool.Free()
 		}
 
-		if sample.ctr.buf != nil {
-			sample.ctr.buf.Clean(proc.Mp())
-			sample.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
 
-		sample.ctr = nil
+		arg.ctr = nil
 	}
 }
 
-func (sample *Sample) ConvertToPipelineOperator(in *pipeline.Instruction) {
+func (arg *Argument) ConvertToPipelineOperator(in *pipeline.Instruction) {
 	in.Agg = &pipeline.Group{
-		Exprs:    sample.GroupExprs,
-		NeedEval: sample.UsingBlock,
+		Exprs:    arg.GroupExprs,
+		NeedEval: arg.UsingBlock,
 	}
-	if sample.NeedOutputRowSeen {
+	if arg.NeedOutputRowSeen {
 		in.Agg.PreAllocSize = 1
 	}
 
 	in.SampleFunc = &pipeline.SampleFunc{
-		SampleColumns: sample.SampleExprs,
+		SampleColumns: arg.SampleExprs,
 		SampleType:    pipeline.SampleFunc_Rows,
-		SampleRows:    int32(sample.Rows),
-		SamplePercent: sample.Percents,
+		SampleRows:    int32(arg.Rows),
+		SamplePercent: arg.Percents,
 	}
-	if sample.Type == sampleByPercent {
+	if arg.Type == sampleByPercent {
 		in.SampleFunc.SampleType = pipeline.SampleFunc_Percent
 	}
-	if sample.Type == mergeSampleByRow {
+	if arg.Type == mergeSampleByRow {
 		in.SampleFunc.SampleType = pipeline.SampleFunc_MergeRows
 	}
 }
 
-func GenerateFromPipelineOperator(opr *pipeline.Instruction) *Sample {
+func GenerateFromPipelineOperator(opr *pipeline.Instruction) *Argument {
 	s := opr.GetSampleFunc()
 	g := opr.GetAgg()
 	needOutputRowSeen := g.PreAllocSize == 1

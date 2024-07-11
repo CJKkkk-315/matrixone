@@ -36,7 +36,7 @@ import (
 
 func TestString(t *testing.T) {
 	buf := new(bytes.Buffer)
-	arg := &Deletion{}
+	arg := &Argument{}
 	arg.String(buf)
 }
 
@@ -69,7 +69,7 @@ func TestNormalDeletion(t *testing.T) {
 	proc.Ctx = ctx
 	proc.Base.TxnOperator = txnOperator
 
-	arg := Deletion{
+	arg := Argument{
 		DeleteCtx: &DeleteCtx{
 			Ref: &plan.ObjectRef{
 				Obj:        0,
@@ -122,7 +122,7 @@ func TestNormalDeletion(t *testing.T) {
 	}).AnyTimes()
 	reader.EXPECT().Close().Return(nil).AnyTimes()
 	reader.EXPECT().GetOrderBy().Return(nil).AnyTimes()
-	childArg := &table_scan.TableScan{
+	childArg := &table_scan.Argument{
 		Reader: reader,
 	}
 	err := childArg.Prepare(proc)

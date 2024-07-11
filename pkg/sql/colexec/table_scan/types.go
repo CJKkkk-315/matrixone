@@ -23,7 +23,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(TableScan)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	maxAllocSize int
@@ -31,7 +31,7 @@ type container struct {
 	buf          *batch.Batch
 	msgReceiver  *process.MessageReceiver
 }
-type TableScan struct {
+type Argument struct {
 	ctr            *container
 	TopValueMsgTag int32
 	Reader         engine.Reader
@@ -41,53 +41,53 @@ type TableScan struct {
 	vm.OperatorBase
 }
 
-func (tableScan *TableScan) GetOperatorBase() *vm.OperatorBase {
-	return &tableScan.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[TableScan](
-		func() *TableScan {
-			return &TableScan{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *TableScan) {
-			*a = TableScan{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[TableScan]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (tableScan TableScan) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *TableScan {
-	return reuse.Alloc[TableScan](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (tableScan *TableScan) Release() {
-	if tableScan != nil {
-		reuse.Free[TableScan](tableScan, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (tableScan *TableScan) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	tableScan.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (tableScan *TableScan) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if tableScan.ctr != nil {
-		if tableScan.ctr.buf != nil {
-			tableScan.ctr.buf.Clean(proc.Mp())
-			tableScan.ctr.buf = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		anal := proc.GetAnalyze(tableScan.GetIdx(), tableScan.GetParallelIdx(), tableScan.GetParallelMajor())
-		anal.Alloc(int64(tableScan.ctr.maxAllocSize))
-		if tableScan.ctr.msgReceiver != nil {
-			tableScan.ctr.msgReceiver.Free()
-			tableScan.ctr.msgReceiver = nil
+		anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
+		anal.Alloc(int64(arg.ctr.maxAllocSize))
+		if arg.ctr.msgReceiver != nil {
+			arg.ctr.msgReceiver.Free()
+			arg.ctr.msgReceiver = nil
 		}
-		tableScan.ctr = nil
+		arg.ctr = nil
 	}
 }

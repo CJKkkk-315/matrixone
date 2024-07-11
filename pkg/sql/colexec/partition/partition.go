@@ -28,12 +28,12 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "partition"
+const argName = "partition"
 
-func (partition *Partition) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": partition([")
-	for i, f := range partition.OrderBySpecs {
+	for i, f := range arg.OrderBySpecs {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
@@ -42,33 +42,33 @@ func (partition *Partition) String(buf *bytes.Buffer) {
 	buf.WriteString("])")
 }
 
-func (partition *Partition) Prepare(proc *process.Process) (err error) {
-	partition.ctr = new(container)
-	ctr := partition.ctr
-	partition.ctr.InitReceiver(proc, true)
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	arg.ctr = new(container)
+	ctr := arg.ctr
+	arg.ctr.InitReceiver(proc, true)
 
 	length := 2 * len(proc.Reg.MergeReceivers)
 	ctr.batchList = make([]*batch.Batch, 0, length)
 	ctr.orderCols = make([][]*vector.Vector, 0, length)
 
-	partition.ctr.executors = make([]colexec.ExpressionExecutor, len(partition.OrderBySpecs))
-	for i := range partition.ctr.executors {
-		partition.ctr.executors[i], err = colexec.NewExpressionExecutor(proc, partition.OrderBySpecs[i].Expr)
+	arg.ctr.executors = make([]colexec.ExpressionExecutor, len(arg.OrderBySpecs))
+	for i := range arg.ctr.executors {
+		arg.ctr.executors[i], err = colexec.NewExpressionExecutor(proc, arg.OrderBySpecs[i].Expr)
 		if err != nil {
 			return err
 		}
 	}
-	ctr.generateCompares(partition.OrderBySpecs)
+	ctr.generateCompares(arg.OrderBySpecs)
 	return nil
 }
 
-func (partition *Partition) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	ctr := partition.ctr
-	anal := proc.GetAnalyze(partition.GetIdx(), partition.GetParallelIdx(), partition.GetParallelMajor())
+	ctr := arg.ctr
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 	result := vm.NewCallResult()

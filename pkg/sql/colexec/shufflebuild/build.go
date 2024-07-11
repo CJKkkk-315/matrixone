@@ -28,25 +28,25 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "shuffle_build"
+const argName = "shuffle_build"
 
-func (shuffleBuild *ShuffleBuild) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": shuffle build ")
 }
 
-func (shuffleBuild *ShuffleBuild) Prepare(proc *process.Process) (err error) {
-	if shuffleBuild.RuntimeFilterSpec == nil {
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	if arg.RuntimeFilterSpec == nil {
 		panic("there must be runtime filter in shuffle build!")
 	}
-	shuffleBuild.RuntimeFilterSpec.Handled = false
-	shuffleBuild.ctr = new(container)
+	arg.RuntimeFilterSpec.Handled = false
+	arg.ctr = new(container)
 
-	shuffleBuild.ctr.vecs = make([][]*vector.Vector, 0)
-	ctr := shuffleBuild.ctr
-	ctr.executor = make([]colexec.ExpressionExecutor, len(shuffleBuild.Conditions))
+	arg.ctr.vecs = make([][]*vector.Vector, 0)
+	ctr := arg.ctr
+	ctr.executor = make([]colexec.ExpressionExecutor, len(arg.Conditions))
 	ctr.keyWidth = 0
-	for i, expr := range shuffleBuild.Conditions {
+	for i, expr := range arg.Conditions {
 		typ := expr.Typ
 		width := types.T(typ.Id).TypeLen()
 		// todo : for varlena type, always go strhashmap
@@ -54,7 +54,7 @@ func (shuffleBuild *ShuffleBuild) Prepare(proc *process.Process) (err error) {
 			width = 128
 		}
 		ctr.keyWidth += width
-		ctr.executor[i], err = colexec.NewExpressionExecutor(proc, shuffleBuild.Conditions[i])
+		ctr.executor[i], err = colexec.NewExpressionExecutor(proc, arg.Conditions[i])
 		if err != nil {
 			return err
 		}
@@ -70,26 +70,26 @@ func (shuffleBuild *ShuffleBuild) Prepare(proc *process.Process) (err error) {
 		}
 	}
 
-	shuffleBuild.ctr.batches = make([]*batch.Batch, 0)
+	arg.ctr.batches = make([]*batch.Batch, 0)
 
 	return nil
 }
 
-func (shuffleBuild *ShuffleBuild) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	anal := proc.GetAnalyze(shuffleBuild.GetIdx(), shuffleBuild.GetParallelIdx(), shuffleBuild.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 	result := vm.NewCallResult()
-	ap := shuffleBuild
+	ap := arg
 	ctr := ap.ctr
 	for {
 		switch ctr.state {
 		case ReceiveBatch:
-			err := ctr.collectBuildBatches(ap, proc, anal, shuffleBuild.GetIsFirst())
+			err := ctr.collectBuildBatches(ap, proc, anal, arg.GetIsFirst())
 			if err != nil {
 				return result, err
 			}
@@ -186,10 +186,10 @@ func (ctr *container) mergeIntoBatches(src *batch.Batch, proc *process.Process) 
 	return nil
 }
 
-func (ctr *container) collectBuildBatches(shuffleBuild *ShuffleBuild, proc *process.Process, anal process.Analyze, isFirst bool) error {
+func (ctr *container) collectBuildBatches(arg *Argument, proc *process.Process, anal process.Analyze, isFirst bool) error {
 	var currentBatch *batch.Batch
 	for {
-		result, err := shuffleBuild.Children[0].Call(proc)
+		result, err := arg.Children[0].Call(proc)
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func (ctr *container) collectBuildBatches(shuffleBuild *ShuffleBuild, proc *proc
 	return nil
 }
 
-func (ctr *container) buildHashmap(ap *ShuffleBuild, proc *process.Process) error {
+func (ctr *container) buildHashmap(ap *Argument, proc *process.Process) error {
 	if len(ctr.batches) == 0 {
 		return nil
 	}
@@ -358,7 +358,7 @@ func (ctr *container) buildHashmap(ap *ShuffleBuild, proc *process.Process) erro
 	return nil
 }
 
-func (ctr *container) handleRuntimeFilter(ap *ShuffleBuild, proc *process.Process) error {
+func (ctr *container) handleRuntimeFilter(ap *Argument, proc *process.Process) error {
 	if ap.RuntimeFilterSpec == nil {
 		panic("there must be runtime filter in shuffle build!")
 	}

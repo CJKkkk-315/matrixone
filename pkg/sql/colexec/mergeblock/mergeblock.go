@@ -22,44 +22,44 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "merge_block"
+const argName = "merge_block"
 
-func (mergeBlock *MergeBlock) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": MergeS3BlocksMetaLoc ")
 }
 
-func (mergeBlock *MergeBlock) Prepare(proc *process.Process) error {
-	ap := mergeBlock
+func (arg *Argument) Prepare(proc *process.Process) error {
+	ap := arg
 	ap.container = new(Container)
 	ap.container.mp = make(map[int]*batch.Batch)
 	ap.container.mp2 = make(map[int][]*batch.Batch)
 
-	ref := mergeBlock.Ref
-	eng := mergeBlock.Engine
-	partitionNames := mergeBlock.PartitionTableNames
+	ref := arg.Ref
+	eng := arg.Engine
+	partitionNames := arg.PartitionTableNames
 	rel, partitionRels, err := colexec.GetRelAndPartitionRelsByObjRef(proc.Ctx, proc, eng, ref, partitionNames)
 	if err != nil {
 		return err
 	}
-	mergeBlock.container.source = rel
-	mergeBlock.container.partitionSources = partitionRels
+	arg.container.source = rel
+	arg.container.partitionSources = partitionRels
 	return nil
 }
 
-func (mergeBlock *MergeBlock) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
 	var err error
-	ap := mergeBlock
-	result, err := mergeBlock.GetChildren(0).Call(proc)
+	ap := arg
+	result, err := arg.GetChildren(0).Call(proc)
 	if err != nil {
 		return result, err
 	}
 
-	anal := proc.GetAnalyze(mergeBlock.GetIdx(), mergeBlock.GetParallelIdx(), mergeBlock.GetParallelMajor())
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer anal.Stop()
 

@@ -30,72 +30,68 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "dispatch"
+const argName = "dispatch"
 
-func (dispatch *Dispatch) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": dispatch")
 }
 
-func (dispatch *Dispatch) Prepare(proc *process.Process) error {
-	for i := range dispatch.LocalRegs {
-		dispatch.LocalRegs[i].CleanChannel(proc.GetMPool())
-	}
-
+func (arg *Argument) Prepare(proc *process.Process) error {
 	ctr := new(container)
-	dispatch.ctr = ctr
-	ctr.localRegsCnt = len(dispatch.LocalRegs)
-	ctr.remoteRegsCnt = len(dispatch.RemoteRegs)
+	arg.ctr = ctr
+	ctr.localRegsCnt = len(arg.LocalRegs)
+	ctr.remoteRegsCnt = len(arg.RemoteRegs)
 	ctr.aliveRegCnt = ctr.localRegsCnt + ctr.remoteRegsCnt
 
-	switch dispatch.FuncId {
+	switch arg.FuncId {
 	case SendToAllFunc:
 		if ctr.remoteRegsCnt == 0 {
 			return moerr.NewInternalError(proc.Ctx, "SendToAllFunc should include RemoteRegs")
 		}
-		if len(dispatch.LocalRegs) == 0 {
+		if len(arg.LocalRegs) == 0 {
 			ctr.sendFunc = sendToAllRemoteFunc
 		} else {
 			ctr.sendFunc = sendToAllFunc
 		}
-		return dispatch.prepareRemote(proc)
+		return arg.prepareRemote(proc)
 
 	case ShuffleToAllFunc:
-		dispatch.ctr.sendFunc = shuffleToAllFunc
-		if dispatch.ctr.remoteRegsCnt > 0 {
-			if err := dispatch.prepareRemote(proc); err != nil {
+		arg.ctr.sendFunc = shuffleToAllFunc
+		if arg.ctr.remoteRegsCnt > 0 {
+			if err := arg.prepareRemote(proc); err != nil {
 				return err
 			}
 		} else {
-			dispatch.prepareLocal()
+			arg.prepareLocal()
 		}
-		dispatch.ctr.batchCnt = make([]int, ctr.aliveRegCnt)
-		dispatch.ctr.rowCnt = make([]int, ctr.aliveRegCnt)
+		arg.ctr.batchCnt = make([]int, ctr.aliveRegCnt)
+		arg.ctr.rowCnt = make([]int, ctr.aliveRegCnt)
 
 	case SendToAnyFunc:
 		if ctr.remoteRegsCnt == 0 {
 			return moerr.NewInternalError(proc.Ctx, "SendToAnyFunc should include RemoteRegs")
 		}
-		if len(dispatch.LocalRegs) == 0 {
+		if len(arg.LocalRegs) == 0 {
 			ctr.sendFunc = sendToAnyRemoteFunc
 		} else {
 			ctr.sendFunc = sendToAnyFunc
 		}
-		return dispatch.prepareRemote(proc)
+		return arg.prepareRemote(proc)
 
 	case SendToAllLocalFunc:
 		if ctr.remoteRegsCnt != 0 {
 			return moerr.NewInternalError(proc.Ctx, "SendToAllLocalFunc should not send to remote")
 		}
 		ctr.sendFunc = sendToAllLocalFunc
-		dispatch.prepareLocal()
+		arg.prepareLocal()
 
 	case SendToAnyLocalFunc:
 		if ctr.remoteRegsCnt != 0 {
 			return moerr.NewInternalError(proc.Ctx, "SendToAnyLocalFunc should not send to remote")
 		}
-		dispatch.ctr.sendFunc = sendToAnyLocalFunc
-		dispatch.prepareLocal()
+		arg.ctr.sendFunc = sendToAnyLocalFunc
+		arg.prepareLocal()
 
 	default:
 		return moerr.NewInternalError(proc.Ctx, "wrong sendFunc id for dispatch")
@@ -104,20 +100,20 @@ func (dispatch *Dispatch) Prepare(proc *process.Process) error {
 	return nil
 }
 
-func printShuffleResult(dispatch *Dispatch) {
-	if dispatch.ctr.batchCnt != nil && dispatch.ctr.rowCnt != nil {
-		logutil.Debugf("shuffle type %v,  dispatch result: batchcnt %v, rowcnt %v", dispatch.ShuffleType, dispatch.ctr.batchCnt, dispatch.ctr.rowCnt)
+func printShuffleResult(arg *Argument) {
+	if arg.ctr.batchCnt != nil && arg.ctr.rowCnt != nil {
+		logutil.Debugf("shuffle type %v,  dispatch result: batchcnt %v, rowcnt %v", arg.ShuffleType, arg.ctr.batchCnt, arg.ctr.rowCnt)
 	}
 }
 
-func (dispatch *Dispatch) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	ap := dispatch
+	ap := arg
 
-	result, err := dispatch.Children[0].Call(proc)
+	result, err := arg.Children[0].Call(proc)
 	if err != nil {
 		return result, err
 	}
@@ -179,8 +175,8 @@ func makeEndBatch(proc *process.Process) (*batch.Batch, error) {
 	return b, err
 }
 
-func (dispatch *Dispatch) waitRemoteRegsReady(proc *process.Process) (bool, error) {
-	cnt := len(dispatch.RemoteRegs)
+func (arg *Argument) waitRemoteRegsReady(proc *process.Process) (bool, error) {
+	cnt := len(arg.RemoteRegs)
 	for cnt > 0 {
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), waitNotifyTimeout)
 		select {
@@ -190,27 +186,27 @@ func (dispatch *Dispatch) waitRemoteRegsReady(proc *process.Process) (bool, erro
 
 		case <-proc.Ctx.Done():
 			timeoutCancel()
-			dispatch.ctr.prepared = true
+			arg.ctr.prepared = true
 			return true, nil
 
 		case csinfo := <-proc.DispatchNotifyCh:
 			timeoutCancel()
-			dispatch.ctr.remoteReceivers = append(dispatch.ctr.remoteReceivers, csinfo)
+			arg.ctr.remoteReceivers = append(arg.ctr.remoteReceivers, csinfo)
 			cnt--
 		}
 	}
-	dispatch.ctr.prepared = true
+	arg.ctr.prepared = true
 	return false, nil
 }
 
-func (dispatch *Dispatch) prepareRemote(proc *process.Process) error {
-	dispatch.ctr.prepared = false
-	dispatch.ctr.isRemote = true
-	dispatch.ctr.remoteReceivers = make([]*process.WrapCs, 0, dispatch.ctr.remoteRegsCnt)
-	dispatch.ctr.remoteToIdx = make(map[uuid.UUID]int)
-	for i, rr := range dispatch.RemoteRegs {
-		if dispatch.FuncId == ShuffleToAllFunc {
-			dispatch.ctr.remoteToIdx[rr.Uuid] = dispatch.ShuffleRegIdxRemote[i]
+func (arg *Argument) prepareRemote(proc *process.Process) error {
+	arg.ctr.prepared = false
+	arg.ctr.isRemote = true
+	arg.ctr.remoteReceivers = make([]*process.WrapCs, 0, arg.ctr.remoteRegsCnt)
+	arg.ctr.remoteToIdx = make(map[uuid.UUID]int)
+	for i, rr := range arg.RemoteRegs {
+		if arg.FuncId == ShuffleToAllFunc {
+			arg.ctr.remoteToIdx[rr.Uuid] = arg.ShuffleRegIdxRemote[i]
 		}
 		if err := colexec.Get().PutProcIntoUuidMap(rr.Uuid, proc); err != nil {
 			return err
@@ -219,8 +215,8 @@ func (dispatch *Dispatch) prepareRemote(proc *process.Process) error {
 	return nil
 }
 
-func (dispatch *Dispatch) prepareLocal() {
-	dispatch.ctr.prepared = true
-	dispatch.ctr.isRemote = false
-	dispatch.ctr.remoteReceivers = nil
+func (arg *Argument) prepareLocal() {
+	arg.ctr.prepared = true
+	arg.ctr.isRemote = false
+	arg.ctr.remoteReceivers = nil
 }

@@ -29,23 +29,23 @@ const (
 	End
 )
 
-const opName = "intersect_all"
+const argName = "intersect_all"
 
-func (intersectAll *IntersectAll) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": intersect all ")
 }
 
-func (intersectAll *IntersectAll) Prepare(proc *process.Process) error {
+func (arg *Argument) Prepare(proc *process.Process) error {
 	var err error
-	intersectAll.ctr = new(container)
-	intersectAll.ctr.InitReceiver(proc, false)
-	if intersectAll.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp()); err != nil {
+	arg.ctr = new(container)
+	arg.ctr.InitReceiver(proc, false)
+	if arg.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp()); err != nil {
 		return err
 	}
-	intersectAll.ctr.inBuckets = make([]uint8, hashmap.UnitLimit)
-	intersectAll.ctr.inserted = make([]uint8, hashmap.UnitLimit)
-	intersectAll.ctr.resetInserted = make([]uint8, hashmap.UnitLimit)
+	arg.ctr.inBuckets = make([]uint8, hashmap.UnitLimit)
+	arg.ctr.inserted = make([]uint8, hashmap.UnitLimit)
+	arg.ctr.resetInserted = make([]uint8, hashmap.UnitLimit)
 	return nil
 }
 
@@ -55,35 +55,35 @@ func (intersectAll *IntersectAll) Prepare(proc *process.Process) error {
 // use values from left relation to probe and update the array.
 // throw away values that do not exist in the hash table.
 // preserve values that exist in the hash table (the minimum of the number of times that exist in either).
-func (intersectAll *IntersectAll) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
 	var err error
-	analyzer := proc.GetAnalyze(intersectAll.GetIdx(), intersectAll.GetParallelIdx(), intersectAll.GetParallelMajor())
+	analyzer := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	analyzer.Start()
 	defer analyzer.Stop()
 	result := vm.NewCallResult()
 	for {
-		switch intersectAll.ctr.state {
+		switch arg.ctr.state {
 		case Build:
-			if err = intersectAll.ctr.build(proc, analyzer, intersectAll.GetIsFirst()); err != nil {
+			if err = arg.ctr.build(proc, analyzer, arg.GetIsFirst()); err != nil {
 				return result, err
 			}
-			if intersectAll.ctr.hashTable != nil {
-				analyzer.Alloc(intersectAll.ctr.hashTable.Size())
+			if arg.ctr.hashTable != nil {
+				analyzer.Alloc(arg.ctr.hashTable.Size())
 			}
-			intersectAll.ctr.state = Probe
+			arg.ctr.state = Probe
 
 		case Probe:
 			last := false
-			last, err = intersectAll.ctr.probe(proc, analyzer, intersectAll.GetIsFirst(), intersectAll.GetIsLast(), &result)
+			last, err = arg.ctr.probe(proc, analyzer, arg.GetIsFirst(), arg.GetIsLast(), &result)
 			if err != nil {
 				return result, err
 			}
 			if last {
-				intersectAll.ctr.state = End
+				arg.ctr.state = End
 				continue
 			}
 			return result, nil

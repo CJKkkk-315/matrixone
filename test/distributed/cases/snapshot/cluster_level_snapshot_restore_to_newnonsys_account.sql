@@ -1,3 +1,4 @@
+-- @bvt:issue#17300
 drop account if exists acc01;
 create account acc01 admin_name = 'test_account' identified by '111';
 drop account if exists acc02;
@@ -419,3 +420,4 @@ select * from Enrollments;
 
 drop snapshot sp_fk;
 drop database test_fk;
+-- @bvt:issue

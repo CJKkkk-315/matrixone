@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(TimeWin)
+var _ vm.Operator = new(Argument)
 
 const (
 	initTag     = 0
@@ -91,11 +91,11 @@ type container struct {
 	wstart []int64
 	wend   []int64
 
-	calRes func(ctr *container, ap *TimeWin, proc *process.Process) (err error)
-	eval   func(ctr *container, ap *TimeWin, proc *process.Process) (err error)
+	calRes func(ctr *container, ap *Argument, proc *process.Process) (err error)
+	eval   func(ctr *container, ap *Argument, proc *process.Process) (err error)
 }
 
-type TimeWin struct {
+type Argument struct {
 	ctr *container
 
 	Types []types.Type
@@ -111,34 +111,34 @@ type TimeWin struct {
 	vm.OperatorBase
 }
 
-func (timeWin *TimeWin) GetOperatorBase() *vm.OperatorBase {
-	return &timeWin.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[TimeWin](
-		func() *TimeWin {
-			return &TimeWin{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *TimeWin) {
-			*a = TimeWin{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[TimeWin]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (timeWin TimeWin) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *TimeWin {
-	return reuse.Alloc[TimeWin](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (timeWin *TimeWin) Release() {
-	if timeWin != nil {
-		reuse.Free[TimeWin](timeWin, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -147,19 +147,19 @@ type Interval struct {
 	Val int64
 }
 
-func (timeWin *TimeWin) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	timeWin.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (timeWin *TimeWin) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := timeWin.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		ctr.FreeMergeTypeOperator(pipelineFailed)
 		ctr.cleanBatch(proc.Mp())
 		ctr.cleanTsVector()
 		ctr.cleanAggVector()
 		ctr.cleanWin()
-		timeWin.ctr = nil
+		arg.ctr = nil
 	}
 }
 

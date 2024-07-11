@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(IndexJoin)
+var _ vm.Operator = new(Argument)
 
 const (
 	Probe = iota
@@ -37,7 +37,7 @@ type container struct {
 	buf   *batch.Batch
 }
 
-type IndexJoin struct {
+type Argument struct {
 	ctr                *container
 	Result             []int32
 	Typs               []types.Type
@@ -45,50 +45,50 @@ type IndexJoin struct {
 	vm.OperatorBase
 }
 
-func (indexJoin *IndexJoin) GetOperatorBase() *vm.OperatorBase {
-	return &indexJoin.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[IndexJoin](
-		func() *IndexJoin {
-			return &IndexJoin{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *IndexJoin) {
-			*a = IndexJoin{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[IndexJoin]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (indexJoin IndexJoin) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *IndexJoin {
-	return reuse.Alloc[IndexJoin](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (indexJoin *IndexJoin) Release() {
-	if indexJoin != nil {
-		reuse.Free[IndexJoin](indexJoin, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (indexJoin *IndexJoin) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	indexJoin.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (indexJoin *IndexJoin) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := indexJoin.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		ctr.FreeAllReg()
-		if indexJoin.ctr.buf != nil {
-			indexJoin.ctr.buf.Clean(proc.Mp())
-			indexJoin.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
-		indexJoin.ctr = nil
+		arg.ctr = nil
 	}
 
 }

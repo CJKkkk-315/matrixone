@@ -18,8 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/matrixorigin/matrixone/pkg/vm/engine/disttae/logtailreplay"
 )
 
 // should ensure that subscribe and unsubscribe methods are effective.
@@ -27,12 +25,6 @@ func TestSubscribedTable(t *testing.T) {
 	var subscribeRecord subscribedTable
 
 	subscribeRecord.m = make(map[SubTableID]SubTableStatus)
-	subscribeRecord.eng = &Engine{
-		partitions: make(map[[2]uint64]*logtailreplay.Partition),
-		globalStats: &GlobalStats{
-			logtailUpdate: newLogtailUpdate(),
-		},
-	}
 	require.Equal(t, 0, len(subscribeRecord.m))
 
 	tbls := []struct {
@@ -46,8 +38,7 @@ func TestSubscribedTable(t *testing.T) {
 		{db: 0, tb: 1},
 	}
 	for _, tbl := range tbls {
-		subscribeRecord.setTableSubscribed(tbl.db, tbl.tb)
-		_ = subscribeRecord.eng.getOrCreateLatestPart(tbl.db, tbl.tb)
+		subscribeRecord.setTableSubscribe(tbl.db, tbl.tb)
 	}
 	require.Equal(t, 4, len(subscribeRecord.m))
 	require.Equal(t, true, subscribeRecord.isSubscribed(tbls[0].db, tbls[0].tb))

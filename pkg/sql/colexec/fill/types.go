@@ -25,7 +25,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Fill)
+var _ vm.Operator = new(Argument)
 
 const (
 	receiveBat    = 0
@@ -63,10 +63,10 @@ type container struct {
 	exes    []colexec.ExpressionExecutor
 	done    bool
 
-	process func(ctr *container, ap *Fill, proc *process.Process, anal process.Analyze) (vm.CallResult, error)
+	process func(ctr *container, ap *Argument, proc *process.Process, anal process.Analyze) (vm.CallResult, error)
 }
 
-type Fill struct {
+type Argument struct {
 	ctr *container
 
 	ColLen   int
@@ -76,49 +76,49 @@ type Fill struct {
 	vm.OperatorBase
 }
 
-func (fill *Fill) GetOperatorBase() *vm.OperatorBase {
-	return &fill.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Fill](
-		func() *Fill {
-			return &Fill{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Fill) {
-			*a = Fill{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Fill]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (fill Fill) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Fill {
-	return reuse.Alloc[Fill](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (fill *Fill) Release() {
-	if fill != nil {
-		reuse.Free[Fill](fill, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (fill *Fill) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	fill.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (fill *Fill) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := fill.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		ctr.FreeMergeTypeOperator(pipelineFailed)
 		ctr.cleanBatch(proc.Mp())
 		ctr.cleanExes()
 
-		fill.ctr = nil
+		arg.ctr = nil
 	}
 }
 

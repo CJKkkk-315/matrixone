@@ -24,7 +24,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(Insert)
+var _ vm.Operator = new(Argument)
 
 // const (
 // 	Process = iota
@@ -41,7 +41,7 @@ type container struct {
 	partitionSources []engine.Relation // Align array index with the partition number
 }
 
-type Insert struct {
+type Argument struct {
 	ctr          *container
 	affectedRows uint64
 	ToWriteS3    bool // mark if this insert's target is S3 or not.
@@ -50,34 +50,34 @@ type Insert struct {
 	vm.OperatorBase
 }
 
-func (insert *Insert) GetOperatorBase() *vm.OperatorBase {
-	return &insert.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[Insert](
-		func() *Insert {
-			return &Insert{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *Insert) {
-			*a = Insert{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[Insert]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (insert Insert) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *Insert {
-	return reuse.Alloc[Insert](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (insert *Insert) Release() {
-	if insert != nil {
-		reuse.Free[Insert](insert, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
@@ -93,40 +93,40 @@ type InsertCtx struct {
 	TableDef              *plan.TableDef
 }
 
-func (insert *Insert) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	insert.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
 // The Argument for insert data directly to s3 can not be free when this function called as some datastructure still needed.
 // therefore, those argument in remote CN will be free in connector operator, and local argument will be free in mergeBlock operator
-func (insert *Insert) Free(proc *process.Process, pipelineFailed bool, err error) {
-	if insert.ctr != nil {
-		if insert.ctr.s3Writer != nil {
-			insert.ctr.s3Writer.Free(proc)
-			insert.ctr.s3Writer = nil
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	if arg.ctr != nil {
+		if arg.ctr.s3Writer != nil {
+			arg.ctr.s3Writer.Free(proc)
+			arg.ctr.s3Writer = nil
 		}
 
 		// Free the partition table S3writer object resources
-		if insert.ctr.partitionS3Writers != nil {
-			for _, writer := range insert.ctr.partitionS3Writers {
+		if arg.ctr.partitionS3Writers != nil {
+			for _, writer := range arg.ctr.partitionS3Writers {
 				writer.Free(proc)
 			}
-			insert.ctr.partitionS3Writers = nil
+			arg.ctr.partitionS3Writers = nil
 		}
 
-		if insert.ctr.buf != nil {
-			insert.ctr.buf.Clean(proc.Mp())
-			insert.ctr.buf = nil
+		if arg.ctr.buf != nil {
+			arg.ctr.buf.Clean(proc.Mp())
+			arg.ctr.buf = nil
 		}
 
-		insert.ctr = nil
+		arg.ctr = nil
 	}
 }
 
-func (insert *Insert) AffectedRows() uint64 {
-	return insert.affectedRows
+func (arg *Argument) AffectedRows() uint64 {
+	return arg.affectedRows
 }
 
-func (insert *Insert) GetAffectedRows() *uint64 {
-	return &insert.affectedRows
+func (arg *Argument) GetAffectedRows() *uint64 {
+	return &arg.affectedRows
 }

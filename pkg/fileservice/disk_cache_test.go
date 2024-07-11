@@ -41,7 +41,7 @@ func TestDiskCache(t *testing.T) {
 	})
 
 	// new
-	cache, err := NewDiskCache(ctx, dir, 1<<20, nil, false)
+	cache, err := NewDiskCache(ctx, dir, 1<<20, nil)
 	assert.Nil(t, err)
 
 	// update
@@ -125,14 +125,14 @@ func TestDiskCache(t *testing.T) {
 	testRead(cache)
 
 	// new cache instance and read
-	cache, err = NewDiskCache(ctx, dir, 1<<20, nil, false)
+	cache, err = NewDiskCache(ctx, dir, 1<<20, nil)
 	assert.Nil(t, err)
 	testRead(cache)
 
 	assert.Equal(t, 1, numWritten)
 
 	// new cache instance and update
-	cache, err = NewDiskCache(ctx, dir, 1<<20, nil, false)
+	cache, err = NewDiskCache(ctx, dir, 1<<20, nil)
 	assert.Nil(t, err)
 	testUpdate(cache)
 
@@ -150,7 +150,7 @@ func TestDiskCacheWriteAgain(t *testing.T) {
 	var counterSet perfcounter.CounterSet
 	ctx = perfcounter.WithCounterSet(ctx, &counterSet)
 
-	cache, err := NewDiskCache(ctx, dir, 4096, nil, false)
+	cache, err := NewDiskCache(ctx, dir, 4096, nil)
 	assert.Nil(t, err)
 
 	// update
@@ -212,7 +212,7 @@ func TestDiskCacheWriteAgain(t *testing.T) {
 func TestDiskCacheFileCache(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
-	cache, err := NewDiskCache(ctx, dir, 1<<20, nil, false)
+	cache, err := NewDiskCache(ctx, dir, 1<<20, nil)
 	assert.Nil(t, err)
 
 	vector := IOVector{
@@ -271,7 +271,7 @@ func TestDiskCacheDirSize(t *testing.T) {
 
 	dir := t.TempDir()
 	capacity := 1 << 20
-	cache, err := NewDiskCache(ctx, dir, capacity, nil, false)
+	cache, err := NewDiskCache(ctx, dir, capacity, nil)
 	assert.Nil(t, err)
 
 	data := bytes.Repeat([]byte("a"), capacity/128)
@@ -330,7 +330,6 @@ func benchmarkDiskCacheWriteThenRead(
 		dir,
 		10<<30,
 		nil,
-		false,
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -422,7 +421,6 @@ func benchmarkDiskCacheReadRandomOffsetAtLargeFile(
 		dir,
 		8<<30,
 		nil,
-		false,
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -490,7 +488,6 @@ func BenchmarkDiskCacheMultipleIOEntries(b *testing.B) {
 		dir,
 		8<<30,
 		nil,
-		false,
 	)
 	if err != nil {
 		b.Fatal(err)

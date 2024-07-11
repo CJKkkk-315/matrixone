@@ -39,7 +39,7 @@ const (
 // add unit tests for cases
 type topTestCase struct {
 	ds     []bool // Directions, ds[i] == true: the attrs[i] are in descending order
-	arg    *MergeTop
+	arg    *Argument
 	types  []types.Type
 	proc   *process.Process
 	cancel context.CancelFunc
@@ -174,7 +174,7 @@ func newTestCase(ds []bool, ts []types.Type, limit int64, fs []*plan.OrderBySpec
 		ds:    ds,
 		types: ts,
 		proc:  proc,
-		arg: &MergeTop{
+		arg: &Argument{
 			Fs:    fs,
 			Limit: plan2.MakePlan2Uint64ConstExprWithType(uint64(limit)),
 			OperatorBase: vm.OperatorBase{

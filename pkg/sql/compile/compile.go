@@ -188,12 +188,7 @@ func (c *Compile) Reset(proc *process.Process, startAt time.Time, fill func(*bat
 		s.Reset(c)
 	}
 
-	for _, v := range c.nodeRegs {
-		v.CleanChannel(c.proc.GetMPool())
-	}
-
-	c.MessageBoard.Reset()
-	c.MessageBoard = process.NewMessageBoard()
+	c.MessageBoard = c.MessageBoard.Reset()
 	c.counterSet.Reset()
 
 	for _, f := range c.fuzzys {
@@ -219,8 +214,7 @@ func (c *Compile) clear() {
 		c.fuzzys[i].release()
 	}
 
-	c.MessageBoard.Reset()
-	c.MessageBoard = nil
+	c.MessageBoard = c.MessageBoard.Reset()
 	c.fuzzys = c.fuzzys[:0]
 	c.scope = c.scope[:0]
 	c.pn = nil
@@ -407,7 +401,7 @@ func (c *Compile) run(s *Scope) error {
 		if err != nil {
 			return err
 		}
-		mergeArg := s.RootOp.(*mergedelete.MergeDelete)
+		mergeArg := s.RootOp.(*mergedelete.Argument)
 		if mergeArg.AddAffectedRows {
 			c.addAffectedRows(mergeArg.AffectedRows)
 		}
@@ -1439,7 +1433,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		}
 
 		n.NotCacheable = true
-		var arg *deletion.Deletion
+		var arg *deletion.Argument
 		arg, err = constructDeletion(n, c.e)
 		if err != nil {
 			return nil, err
@@ -1448,6 +1442,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		if n.Stats.Cost*float64(SingleLineSizeEstimate) >
 			float64(DistributedThreshold) &&
 			!arg.DeleteCtx.CanTruncate {
+			c.proc.Infof(c.proc.Ctx, "delete of '%s' write s3\n", c.sql)
 			rs := c.newDeleteMergeScope(arg, ss)
 			rs.appendInstruction(vm.Instruction{
 				Op: vm.MergeDelete,
@@ -1516,7 +1511,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		currentFirstFlag := c.anal.isFirst
 		for i := range ss {
 			if n.NodeType == plan.Node_PRE_INSERT_UK {
-				var preInsertUkArg *preinsertunique.PreInsertUnique
+				var preInsertUkArg *preinsertunique.Argument
 				preInsertUkArg, err = constructPreInsertUk(n, c.proc)
 				if err != nil {
 					return nil, err
@@ -1528,7 +1523,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 					Arg:     preInsertUkArg,
 				})
 			} else {
-				var preInsertSkArg *preinsertsecondaryindex.PreInsertSecIdx
+				var preInsertSkArg *preinsertsecondaryindex.Argument
 				preInsertSkArg, err = constructPreInsertSk(n, c.proc)
 				if err != nil {
 					return nil, err
@@ -1551,7 +1546,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		}
 		currentFirstFlag := c.anal.isFirst
 		for i := range ss {
-			var preInsertArg *preinsert.PreInsert
+			var preInsertArg *preinsert.Argument
 			preInsertArg, err = constructPreInsert(ns, n, c.e, c.proc)
 			if err != nil {
 				return nil, err
@@ -1581,7 +1576,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		if toWriteS3 {
 			c.proc.Debugf(c.proc.Ctx, "insert of '%s' write s3\n", c.sql)
 			if !haveSinkScanInPlan(ns, n.Children[0]) && len(ss) != 1 {
-				var insertArg *insert.Insert
+				var insertArg *insert.Argument
 				insertArg, err = constructInsert(n, c.e)
 				if err != nil {
 					return nil, err
@@ -1636,7 +1631,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 				}
 				dataScope.IsEnd = true
 				for i := range scopes {
-					var insertArg *insert.Insert
+					var insertArg *insert.Argument
 					insertArg, err = constructInsert(n, c.e)
 					if err != nil {
 						return nil, err
@@ -1650,7 +1645,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 					})
 				}
 
-				var insertArg *insert.Insert
+				var insertArg *insert.Argument
 				insertArg, err = constructInsert(n, c.e)
 				if err != nil {
 					return nil, err
@@ -1672,7 +1667,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 			}
 		} else {
 			for i := range ss {
-				var insertArg *insert.Insert
+				var insertArg *insert.Argument
 				insertArg, err = constructInsert(n, c.e)
 				if err != nil {
 					return nil, err
@@ -1719,7 +1714,7 @@ func (c *Compile) compilePlanScope(step int32, curNodeIdx int32, ns []*plan.Node
 		}
 		currentFirstFlag := c.anal.isFirst
 		for i := range ss {
-			var lockOpArg *lockop.LockOp
+			var lockOpArg *lockop.Argument
 			lockOpArg, err = constructLockOp(n, c.e)
 			if err != nil {
 				return nil, err
@@ -3488,7 +3483,7 @@ func (c *Compile) compileShuffleGroup(n *plan.Node, ss []*Scope, ns []*plan.Node
 // CN, so we need to transfer the rows from the
 // the same block to one and the same CN to perform
 // the deletion operators.
-func (c *Compile) newDeleteMergeScope(arg *deletion.Deletion, ss []*Scope) *Scope {
+func (c *Compile) newDeleteMergeScope(arg *deletion.Argument, ss []*Scope) *Scope {
 	// Todo: implemet delete merge
 	ss2 := make([]*Scope, 0, len(ss))
 	// ends := make([]*Scope, 0, len(ss))
@@ -4864,7 +4859,7 @@ func (s *Scope) affectedRows() uint64 {
 
 	for op != nil {
 		if arg, ok := op.(vm.ModificationArgument); ok {
-			if marg, ok := arg.(*mergeblock.MergeBlock); ok {
+			if marg, ok := arg.(*mergeblock.Argument); ok {
 				return marg.AffectedRows()
 			}
 			affectedRows += arg.AffectedRows()
@@ -4954,7 +4949,7 @@ func evalRowsetData(proc *process.Process,
 	return nil
 }
 
-func (c *Compile) newInsertMergeScope(arg *insert.Insert, ss []*Scope) *Scope {
+func (c *Compile) newInsertMergeScope(arg *insert.Argument, ss []*Scope) *Scope {
 	// see errors.Join()
 	n := 0
 	for _, s := range ss {

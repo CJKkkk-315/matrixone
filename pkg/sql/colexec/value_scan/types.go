@@ -21,62 +21,62 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(ValueScan)
+var _ vm.Operator = new(Argument)
 
 type container struct {
 	idx int
 }
-type ValueScan struct {
+type Argument struct {
 	ctr    *container
 	Batchs []*batch.Batch
 
 	vm.OperatorBase
 }
 
-func (valueScan *ValueScan) GetOperatorBase() *vm.OperatorBase {
-	return &valueScan.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[ValueScan](
-		func() *ValueScan {
-			return &ValueScan{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *ValueScan) {
-			*a = ValueScan{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[ValueScan]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (valueScan ValueScan) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *ValueScan {
-	return reuse.Alloc[ValueScan](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (valueScan *ValueScan) Release() {
-	if valueScan != nil {
-		reuse.Free[ValueScan](valueScan, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (valueScan *ValueScan) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	valueScan.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (valueScan *ValueScan) Free(proc *process.Process, pipelineFailed bool, err error) {
-	for _, bat := range valueScan.Batchs {
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	for _, bat := range arg.Batchs {
 		if bat != nil {
 			bat.Clean(proc.Mp())
 		}
 	}
-	valueScan.Batchs = nil
-	if valueScan.ctr != nil {
-		valueScan.ctr.idx = 0
-		valueScan.ctr = nil
+	arg.Batchs = nil
+	if arg.ctr != nil {
+		arg.ctr.idx = 0
+		arg.ctr = nil
 	}
 }

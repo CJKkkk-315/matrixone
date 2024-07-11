@@ -23,20 +23,20 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "minus"
+const argName = "minus"
 
-func (minus *Minus) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
 	buf.WriteString(": minus ")
 }
 
-func (minus *Minus) Prepare(proc *process.Process) error {
+func (arg *Argument) Prepare(proc *process.Process) error {
 	var err error
 	{
-		minus.ctr = new(container)
-		minus.ctr.InitReceiver(proc, false)
-		minus.ctr.bat = nil
-		minus.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp())
+		arg.ctr = new(container)
+		arg.ctr.InitReceiver(proc, false)
+		arg.ctr.bat = nil
+		arg.ctr.hashTable, err = hashmap.NewStrMap(true, proc.Mp())
 		if err != nil {
 			return err
 		}
@@ -48,29 +48,29 @@ func (minus *Minus) Prepare(proc *process.Process) error {
 // it built a hash table for right relation first.
 // use values from left relation to probe and update the hash table.
 // and preserve values that do not exist in the hash table.
-func (minus *Minus) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
 	var err error
 	// prepare the analysis work.
-	analyze := proc.GetAnalyze(minus.GetIdx(), minus.GetParallelIdx(), minus.GetParallelMajor())
+	analyze := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	analyze.Start()
 	defer analyze.Stop()
 	result := vm.NewCallResult()
 
 	for {
-		switch minus.ctr.state {
+		switch arg.ctr.state {
 		case buildingHashMap:
 			// step 1: build the hash table by all right batches.
-			if err = minus.ctr.buildHashTable(proc, analyze, 1, minus.GetIsFirst()); err != nil {
+			if err = arg.ctr.buildHashTable(proc, analyze, 1, arg.GetIsFirst()); err != nil {
 				return result, err
 			}
-			if minus.ctr.hashTable != nil {
-				analyze.Alloc(minus.ctr.hashTable.Size())
+			if arg.ctr.hashTable != nil {
+				analyze.Alloc(arg.ctr.hashTable.Size())
 			}
-			minus.ctr.state = probingHashMap
+			arg.ctr.state = probingHashMap
 
 		case probingHashMap:
 			// step 2: use left batches to probe and update the hash table.
@@ -78,12 +78,12 @@ func (minus *Minus) Call(proc *process.Process) (vm.CallResult, error) {
 			// only one batch is processed during each loop, and the batch will be sent to
 			// next operator immediately after successful processing.
 			last := false
-			last, err = minus.ctr.probeHashTable(proc, analyze, 0, minus.GetIsFirst(), minus.GetIsLast(), &result)
+			last, err = arg.ctr.probeHashTable(proc, analyze, 0, arg.GetIsFirst(), arg.GetIsLast(), &result)
 			if err != nil {
 				return result, err
 			}
 			if last {
-				minus.ctr.state = operatorEnd
+				arg.ctr.state = operatorEnd
 				continue
 			}
 			return result, nil

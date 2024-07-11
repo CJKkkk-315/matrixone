@@ -25,7 +25,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-var _ vm.Operator = new(MergeGroup)
+var _ vm.Operator = new(Argument)
 
 const (
 	Build = iota
@@ -53,7 +53,7 @@ type container struct {
 	bat *batch.Batch
 }
 
-type MergeGroup struct {
+type Argument struct {
 	NeedEval bool // need to projection the aggregate column
 	ctr      *container
 
@@ -63,54 +63,54 @@ type MergeGroup struct {
 	vm.OperatorBase
 }
 
-func (mergeGroup *MergeGroup) GetOperatorBase() *vm.OperatorBase {
-	return &mergeGroup.OperatorBase
+func (arg *Argument) GetOperatorBase() *vm.OperatorBase {
+	return &arg.OperatorBase
 }
 
 func init() {
-	reuse.CreatePool[MergeGroup](
-		func() *MergeGroup {
-			return &MergeGroup{}
+	reuse.CreatePool[Argument](
+		func() *Argument {
+			return &Argument{}
 		},
-		func(a *MergeGroup) {
-			*a = MergeGroup{}
+		func(a *Argument) {
+			*a = Argument{}
 		},
-		reuse.DefaultOptions[MergeGroup]().
+		reuse.DefaultOptions[Argument]().
 			WithEnableChecker(),
 	)
 }
 
-func (mergeGroup MergeGroup) TypeName() string {
-	return opName
+func (arg Argument) TypeName() string {
+	return argName
 }
 
-func NewArgument() *MergeGroup {
-	return reuse.Alloc[MergeGroup](nil)
+func NewArgument() *Argument {
+	return reuse.Alloc[Argument](nil)
 }
 
-func (mergeGroup *MergeGroup) WithNeedEval(needEval bool) *MergeGroup {
-	mergeGroup.NeedEval = needEval
-	return mergeGroup
+func (arg *Argument) WithNeedEval(needEval bool) *Argument {
+	arg.NeedEval = needEval
+	return arg
 }
 
-func (mergeGroup *MergeGroup) Release() {
-	if mergeGroup != nil {
-		reuse.Free[MergeGroup](mergeGroup, nil)
+func (arg *Argument) Release() {
+	if arg != nil {
+		reuse.Free[Argument](arg, nil)
 	}
 }
 
-func (mergeGroup *MergeGroup) Reset(proc *process.Process, pipelineFailed bool, err error) {
-	mergeGroup.Free(proc, pipelineFailed, err)
+func (arg *Argument) Reset(proc *process.Process, pipelineFailed bool, err error) {
+	arg.Free(proc, pipelineFailed, err)
 }
 
-func (mergeGroup *MergeGroup) Free(proc *process.Process, pipelineFailed bool, err error) {
-	ctr := mergeGroup.ctr
+func (arg *Argument) Free(proc *process.Process, pipelineFailed bool, err error) {
+	ctr := arg.ctr
 	if ctr != nil {
 		mp := proc.Mp()
 		ctr.FreeMergeTypeOperator(pipelineFailed)
 		ctr.cleanBatch(mp)
 		ctr.cleanHashMap()
-		mergeGroup.ctr = nil
+		arg.ctr = nil
 	}
 }
 

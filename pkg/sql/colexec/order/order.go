@@ -27,7 +27,7 @@ import (
 	"github.com/matrixorigin/matrixone/pkg/vm/process"
 )
 
-const opName = "order"
+const argName = "order"
 
 func (ctr *container) appendBatch(proc *process.Process, bat *batch.Batch) (enoughToSend bool, err error) {
 	s1, s2 := 0, bat.Size()
@@ -158,9 +158,9 @@ func (ctr *container) sortAndSend(proc *process.Process, result *vm.CallResult) 
 	return nil
 }
 
-func (order *Order) String(buf *bytes.Buffer) {
-	buf.WriteString(opName)
-	ap := order
+func (arg *Argument) String(buf *bytes.Buffer) {
+	buf.WriteString(argName)
+	ap := arg
 	buf.WriteString(": τ([")
 	for i, f := range ap.OrderBySpec {
 		if i > 0 {
@@ -171,30 +171,30 @@ func (order *Order) String(buf *bytes.Buffer) {
 	buf.WriteString("])")
 }
 
-func (order *Order) Prepare(proc *process.Process) (err error) {
-	order.ctr = new(container)
-	ctr := order.ctr
+func (arg *Argument) Prepare(proc *process.Process) (err error) {
+	arg.ctr = new(container)
+	ctr := arg.ctr
 	ctr.state = vm.Build
 	{
-		ctr.desc = make([]bool, len(order.OrderBySpec))
-		ctr.nullsLast = make([]bool, len(order.OrderBySpec))
-		ctr.sortVectors = make([]*vector.Vector, len(order.OrderBySpec))
-		for i, f := range order.OrderBySpec {
+		ctr.desc = make([]bool, len(arg.OrderBySpec))
+		ctr.nullsLast = make([]bool, len(arg.OrderBySpec))
+		ctr.sortVectors = make([]*vector.Vector, len(arg.OrderBySpec))
+		for i, f := range arg.OrderBySpec {
 			ctr.desc[i] = f.Flag&pbplan.OrderBySpec_DESC != 0
 			if f.Flag&pbplan.OrderBySpec_NULLS_FIRST != 0 {
-				order.ctr.nullsLast[i] = false
+				arg.ctr.nullsLast[i] = false
 			} else if f.Flag&pbplan.OrderBySpec_NULLS_LAST != 0 {
-				order.ctr.nullsLast[i] = true
+				arg.ctr.nullsLast[i] = true
 			} else {
-				order.ctr.nullsLast[i] = order.ctr.desc[i]
+				arg.ctr.nullsLast[i] = arg.ctr.desc[i]
 			}
 		}
 	}
 
-	ctr.sortVectors = make([]*vector.Vector, len(order.OrderBySpec))
-	ctr.sortExprExecutor = make([]colexec.ExpressionExecutor, len(order.OrderBySpec))
+	ctr.sortVectors = make([]*vector.Vector, len(arg.OrderBySpec))
+	ctr.sortExprExecutor = make([]colexec.ExpressionExecutor, len(arg.OrderBySpec))
 	for i := range ctr.sortVectors {
-		ctr.sortExprExecutor[i], err = colexec.NewExpressionExecutor(proc, order.OrderBySpec[i].Expr)
+		ctr.sortExprExecutor[i], err = colexec.NewExpressionExecutor(proc, arg.OrderBySpec[i].Expr)
 		if err != nil {
 			return err
 		}
@@ -203,13 +203,13 @@ func (order *Order) Prepare(proc *process.Process) (err error) {
 	return nil
 }
 
-func (order *Order) Call(proc *process.Process) (vm.CallResult, error) {
+func (arg *Argument) Call(proc *process.Process) (vm.CallResult, error) {
 	if err, isCancel := vm.CancelCheck(proc); isCancel {
 		return vm.CancelResult, err
 	}
 
-	ctr := order.ctr
-	anal := proc.GetAnalyze(order.GetIdx(), order.GetParallelIdx(), order.GetParallelMajor())
+	ctr := arg.ctr
+	anal := proc.GetAnalyze(arg.GetIdx(), arg.GetParallelIdx(), arg.GetParallelMajor())
 	anal.Start()
 	defer func() {
 		anal.Stop()
@@ -217,7 +217,7 @@ func (order *Order) Call(proc *process.Process) (vm.CallResult, error) {
 
 	if ctr.state == vm.Build {
 		for {
-			result, err := vm.ChildrenCall(order.GetChildren(0), proc, anal)
+			result, err := vm.ChildrenCall(arg.GetChildren(0), proc, anal)
 
 			if err != nil {
 				result.Status = vm.ExecStop
