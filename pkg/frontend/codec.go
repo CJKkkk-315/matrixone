@@ -16,6 +16,8 @@ package frontend
 
 import (
 	"context"
+	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"io"
 
 	"github.com/fagongzi/goetty/v2/buf"
@@ -52,6 +54,7 @@ func (c *sqlCodec) Decode(in *buf.ByteBuf) (interface{}, bool, error) {
 
 	header := in.PeekN(0, PacketHeaderLength)
 	length := int32(uint32(header[0]) | uint32(header[1])<<8 | uint32(header[2])<<16)
+
 	if length == 0 {
 		return nil, false, errorInvalidLength0
 	}
@@ -65,6 +68,9 @@ func (c *sqlCodec) Decode(in *buf.ByteBuf) (interface{}, bool, error) {
 	in.Skip(PacketHeaderLength)
 	in.SetMarkIndex(in.GetReadIndex() + int(length))
 	payload := in.ReadMarkedData()
+	if length > 1024*1024 {
+		logutil.Warn(fmt.Sprintf("(CJK) WARNING! %d PACKET LENGTH %s", length, payload))
+	}
 
 	packet := &Packet{
 		Length:     length,
