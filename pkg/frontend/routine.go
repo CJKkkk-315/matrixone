@@ -294,7 +294,7 @@ func (rt *Routine) handleRequest(req *Request) error {
 		data: make([]byte, len(req.data.([]byte))),
 	}
 	copy(copyReq.data.([]byte), req.data.([]byte))
-	if resp, err = ExecRequest(ses, &execCtx, req); err != nil {
+	if resp, err = ExecRequest(ses, &execCtx, copyReq); err != nil {
 		if !skipClientQuit(err.Error()) {
 			ses.Error(tenantCtx,
 				"Failed to execute request",
