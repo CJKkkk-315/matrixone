@@ -288,13 +288,7 @@ func (rt *Routine) handleRequest(req *Request) error {
 	})
 
 	execCtx.reqCtx = tenantCtx
-	copyReq := &Request{
-		cmd:  req.cmd,
-		seq:  req.seq,
-		data: make([]byte, len(req.data.([]byte))),
-	}
-	copy(copyReq.data.([]byte), req.data.([]byte))
-	if resp, err = ExecRequest(ses, &execCtx, copyReq); err != nil {
+	if resp, err = ExecRequest(ses, &execCtx, req); err != nil {
 		if !skipClientQuit(err.Error()) {
 			ses.Error(tenantCtx,
 				"Failed to execute request",
