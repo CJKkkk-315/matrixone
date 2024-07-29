@@ -291,7 +291,7 @@ func (rt *Routine) handleRequest(req *Request) error {
 	copyReq := &Request{
 		cmd:  req.cmd,
 		seq:  req.seq,
-		data: make([]byte, len(req.data.([]int))),
+		data: make([]byte, len(req.data.([]byte))),
 	}
 	copy(copyReq.data.([]byte), req.data.([]byte))
 	if resp, err = ExecRequest(ses, &execCtx, req); err != nil {
