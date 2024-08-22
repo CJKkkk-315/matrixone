@@ -1492,3 +1492,17 @@ func colDef2MysqlColumn(ctx context.Context, col *plan.ColDef) (*MysqlColumn, er
 	convertMysqlTextTypeToBlobType(c)
 	return c, nil
 }
+
+func splitPasswordFromURI(uri string) (string, string, bool) {
+	atIndex := strings.Index(uri, "@")
+	if atIndex == -1 {
+		return uri, "", false
+	}
+	colonIndex := strings.LastIndex(uri[:atIndex], ":")
+	if colonIndex == -1 {
+		return uri, "", false
+	}
+	newURI := uri[:colonIndex] + ":******" + uri[atIndex:]
+	password := uri[colonIndex+1 : atIndex]
+	return newURI, password, true
+}

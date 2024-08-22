@@ -17,6 +17,7 @@ package frontend
 import (
 	"context"
 	"fmt"
+	"github.com/matrixorigin/matrixone/pkg/logutil"
 	"os"
 	"strconv"
 	"strings"
@@ -70,8 +71,6 @@ const (
 		`"%s",` + //state
 		`%d,` + //checkpoint
 		`"%d",` + //checkpoint_str
-		`"%s",` + //full_config
-		`"%s",` + //incr_config
 		`"",` + //reserved0
 		`"",` + //reserved1
 		`"",` + //reserved2
@@ -137,8 +136,6 @@ func getSqlForNewCdcTask(
 	taskCreateTime time.Time,
 	state string,
 	checkpoint uint64,
-	fullConfig string,
-	incrConfig string,
 ) string {
 	return fmt.Sprintf(insertNewCdcTaskFormat,
 		accId,
@@ -166,8 +163,6 @@ func getSqlForNewCdcTask(
 		state,
 		checkpoint,
 		checkpoint,
-		fullConfig,
-		incrConfig,
 	)
 }
 
@@ -504,14 +499,18 @@ func createCdc(
 
 	dat := time.Now().UTC()
 
+	safeUri, _, suc := splitPasswordFromURI(create.SourceUri)
+	if !suc {
+		logutil.Errorf("Failed to split password from URI: %s", create.SourceUri)
+	}
 	//TODO: make it better
 	//Currently just for test
 	insertSql := getSqlForNewCdcTask(
 		uint64(accInfo.GetTenantID()),
 		cdcId,
 		create.TaskName,
-		create.SourceUri,
-		"FIXME",
+		safeUri,
+		"",
 		create.SinkUri,
 		create.SinkType,
 		"FIXME",
@@ -529,8 +528,6 @@ func createCdc(
 		dat,
 		SyncLoading,
 		0, //FIXME
-		"FIXME",
-		"FIXME",
 	)
 
 	if _, err = ts.AddCdcTask(ctx, cdcTaskMetadata(cdcId.String()), details, insertSql); err != nil {
