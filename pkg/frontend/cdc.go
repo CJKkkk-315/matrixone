@@ -430,6 +430,40 @@ func patterns2tables(ctx context.Context, pts []*PatternTuple, bh BackgroundExec
 	}
 	return resMap, nil
 }
+func canCreateCdcTask(ctx context.Context, ses *Session, level string, account string, pts []*PatternTuple) error {
+
+	if strings.EqualFold(level, ClusterLevel) {
+		if !ses.tenant.IsMoAdminRole() {
+			return moerr.NewInternalError(ctx, "Only sys account administrator are allowed to create cluster level task")
+		}
+		for _, pt := range pts {
+			if pt.SourceAccount == "" {
+				pt.SourceAccount = ses.GetTenantName()
+			}
+			if isBannedDatabase(pt.SourceDatabase) {
+				return moerr.NewInternalError(ctx, "The system database cannot be subscribed to")
+			}
+		}
+	} else if strings.EqualFold(level, AccountLevel) {
+		if !ses.tenant.IsMoAdminRole() && ses.GetTenantName() != account {
+			return moerr.NewInternalError(ctx, "No privilege to create task on %s", account)
+		}
+		for _, pt := range pts {
+			if pt.SourceAccount == "" {
+				pt.SourceAccount = account
+			}
+			if account != pt.SourceAccount {
+				return moerr.NewInternalError(ctx, "No privilege to create task on table %s", pt.OriginString)
+			}
+			if isBannedDatabase(pt.SourceDatabase) {
+				return moerr.NewInternalError(ctx, "The system database cannot be subscribed to")
+			}
+		}
+	} else {
+		return moerr.NewInternalError(ctx, "Incorrect level %s", level)
+	}
+	return nil
+}
 
 func createCdc(
 	ctx context.Context,
@@ -439,6 +473,20 @@ func createCdc(
 ) error {
 	var startTs, endTs, concurrency uint64
 	var err error
+
+	cdcTaskOptionsMap := make(map[string]string)
+	for i := 0; i < len(create.Option); i += 2 {
+		cdcTaskOptionsMap[create.Option[i]] = create.Option[i+1]
+	}
+
+	pts, err := string2patterns(create.Tables)
+	if err != nil {
+		return err
+	}
+
+	if err = canCreateCdcTask(ctx, ses, cdcTaskOptionsMap["Level"], cdcTaskOptionsMap["Account"], pts); err != nil {
+		return err
+	}
 
 	accInfo := ses.GetTenantInfo()
 	cdcId, _ := uuid.NewV7()
@@ -464,33 +512,6 @@ func createCdc(
 		create.SinkUri,
 		create.SinkType,
 	)
-	cdcTaskOptionsMap := make(map[string]string)
-	for i := 0; i < len(create.Option); i += 2 {
-		cdcTaskOptionsMap[create.Option[i]] = create.Option[i+1]
-	}
-
-	pts, err := string2patterns(create.Tables)
-	if err != nil {
-		return err
-	}
-
-	if strings.EqualFold(cdcTaskOptionsMap["Level"], ClusterLevel) {
-		if !ses.tenant.IsMoAdminRole() {
-			return moerr.NewInternalError(ctx, "Only sys account administrator are allowed to create cluster level task")
-		}
-	} else if strings.EqualFold(cdcTaskOptionsMap["Level"], AccountLevel) {
-		if !ses.tenant.IsAccountAdminRole() || ses.GetTenantName() != cdcTaskOptionsMap["Account"] {
-			return moerr.NewInternalError(ctx, "No privilege to create task on %s", cdcTaskOptionsMap["Account"])
-		}
-		for _, pt := range pts {
-			if pt.SourceAccount == "" {
-				pt.SourceAccount = ses.GetTenantName()
-			}
-			if ses.GetTenantName() != pt.SourceAccount {
-				return moerr.NewInternalError(ctx, "No privilege to create task on table %s", pt.OriginString)
-			}
-		}
-	}
 
 	startTs, err = string2uint64(cdcTaskOptionsMap["StartTS"])
 	if err != nil {
@@ -856,7 +877,7 @@ func (cdc *CdcTask) Start(rootCtx context.Context, firstTime bool) (err error) {
 		return err
 	}
 	for _, info := range dbTableInfos {
-		if err = cdc.addExePipelineForTable(info.tblId, watermark); err != nil {
+		if err = cdc.addExePipelineForTable(info.tblId, watermark, cdc.sunkWatermarkUpdater); err != nil {
 			return err
 		}
 	}
@@ -1061,7 +1082,7 @@ func (cdc *CdcTask) unsubscribeTable(cdcTbl *disttae.CdcRelation) (err error) {
 	return
 }
 
-func (cdc *CdcTask) addExePipelineForTable(tableId uint64, watermark timestamp.Timestamp) (err error) {
+func (cdc *CdcTask) addExePipelineForTable(tableId uint64, watermark timestamp.Timestamp, wmarkUpdater *cdc2.WatermarkUpdater) (err error) {
 	//                         + == inputCh == > decoder == interCh == > sinker -> remote db    // for table 1
 	// 	                       |
 	// inQueue -> partitioner -+ == inputCh == > decoder == interCh == > sinker -> remote db    // for table 2
@@ -1078,7 +1099,7 @@ func (cdc *CdcTask) addExePipelineForTable(tableId uint64, watermark timestamp.T
 	cdc.interChs[tableId] = make(chan tools.Pair[*disttae.TableCtx, *cdc2.DecoderOutput])
 
 	// make decoder for table
-	decoder := cdc2.NewDecoder(cdc.cdcEngMp, cdc.cdcEngine.FS(), tableId, cdc.inputChs[tableId], cdc.interChs[tableId], cdc.maxAllowedPacket)
+	decoder := cdc2.NewDecoder(cdc.cdcEngMp, cdc.cdcEngine.FS(), tableId, cdc.inputChs[tableId], cdc.interChs[tableId], wmarkUpdater, cdc.maxAllowedPacket)
 	go decoder.Run(ctx, cdc.activeRoutine)
 
 	// make sinker for table
