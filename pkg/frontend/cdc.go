@@ -867,7 +867,10 @@ func (cdc *CdcTask) Start(rootCtx context.Context, firstTime bool) (err error) {
 	cdc.interChs = make(map[uint64]chan tools.Pair[*disttae.TableCtx, *cdc2.DecoderOutput], len(dbTableInfos))
 
 	cdc.sinkConn, err = cdc2.OpenDbConn(ctx, cdc.sinkUri, concurrency)
-	err = cdc.sinkConn.QueryRow("SELECT @@max_allowed_packet").Scan(nil, &cdc.maxAllowedPacket)
+	if err != nil {
+		return err
+	}
+	err = cdc.sinkConn.QueryRow("SELECT @@max_allowed_packet").Scan(&cdc.maxAllowedPacket)
 	if err != nil {
 		return err
 	}
