@@ -26,17 +26,6 @@ import (
 	"time"
 )
 
-func TestKKK(t *testing.T) {
-	pwd := "cjkcjkcjk"
-	r := HashPassWord(pwd)
-	fmt.Println(r)
-	pp, err := GetPassWord(r)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(string(pp))
-}
-
 func hasData(conn net.Conn) (bool, error) {
 	timeout := 1 * time.Second
 	conn.SetReadDeadline(time.Now().Add(timeout))
