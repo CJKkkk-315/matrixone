@@ -43,17 +43,18 @@ const (
 	ObjectsRealDataOffset int = 0
 	DeltaRealDataOffset   int = 1
 
-	MaxSqlSize int = 32 * 1024 * 1024
+	MaxSqlSize uint64 = 32 * 1024 * 1024
 )
 
 var _ Decoder = new(decoder)
 
 type decoder struct {
-	mp       *mpool.MPool
-	fs       fileservice.FileService
-	tableId  uint64
-	inputCh  chan tools.Pair[*disttae.TableCtx, *disttae.DecoderInput]
-	outputCh chan tools.Pair[*disttae.TableCtx, *DecoderOutput]
+	mp         *mpool.MPool
+	fs         fileservice.FileService
+	tableId    uint64
+	inputCh    chan tools.Pair[*disttae.TableCtx, *disttae.DecoderInput]
+	outputCh   chan tools.Pair[*disttae.TableCtx, *DecoderOutput]
+	maxSqlSize uint64
 }
 
 func NewDecoder(
@@ -62,13 +63,15 @@ func NewDecoder(
 	tableId uint64,
 	inputCh chan tools.Pair[*disttae.TableCtx, *disttae.DecoderInput],
 	outputCh chan tools.Pair[*disttae.TableCtx, *DecoderOutput],
+	maxSqlSize uint64,
 ) Decoder {
 	return &decoder{
-		mp:       mp,
-		fs:       fs,
-		tableId:  tableId,
-		inputCh:  inputCh,
-		outputCh: outputCh,
+		mp:         mp,
+		fs:         fs,
+		tableId:    tableId,
+		inputCh:    inputCh,
+		outputCh:   outputCh,
+		maxSqlSize: maxSqlSize,
 	}
 }
 
@@ -116,7 +119,7 @@ func (dec *decoder) Decode(ctx context.Context, cdcCtx *disttae.TableCtx, input 
 		defer wg.Done()
 		it := input.State().NewRowsIterInCdc()
 		defer it.Close()
-		rows, err2 := decodeRows(ctx, cdcCtx, input.TS(), it)
+		rows, err2 := decodeRows(ctx, cdcCtx, input.TS(), it, dec.maxSqlSize)
 		if err2 != nil {
 			return
 		}
@@ -140,6 +143,7 @@ func (dec *decoder) Decode(ctx context.Context, cdcCtx *disttae.TableCtx, input 
 				it,
 				dec.fs,
 				dec.mp,
+				dec.maxSqlSize,
 			)
 			if err2 != nil {
 				return
@@ -162,6 +166,7 @@ func (dec *decoder) Decode(ctx context.Context, cdcCtx *disttae.TableCtx, input 
 			input.TS(),
 			it,
 			dec.fs,
+			dec.maxSqlSize,
 		)
 		if err2 != nil {
 			return
@@ -179,7 +184,8 @@ func decodeRows(
 	ctx context.Context,
 	cdcCtx *disttae.TableCtx,
 	ts timestamp.Timestamp,
-	rowsIter logtailreplay.RowsIter) (res [][]byte, err error) {
+	rowsIter logtailreplay.RowsIter,
+	maxSqlSize uint64) (res [][]byte, err error) {
 	//TODO: schema info
 	var row []any
 	var typs []types.Type
@@ -231,9 +237,9 @@ func decodeRows(
 	deletePrefix := timePrefix + fmt.Sprintf("DELETE FROM `%s`.`%s` WHERE %s IN (", cdcCtx.Db(), cdcCtx.Table(), primaryKeyStr)
 
 	// init sql buffer
-	insertBuff := make([]byte, 0, MaxSqlSize)
+	insertBuff := make([]byte, 0, maxSqlSize)
 	insertBuff = append(insertBuff, []byte(insertPrefix)...)
-	deleteBuff := make([]byte, 0, MaxSqlSize)
+	deleteBuff := make([]byte, 0, maxSqlSize)
 	deleteBuff = append(deleteBuff, []byte(deletePrefix)...)
 
 	valuesBuff := make([]byte, 0, 1024)
@@ -288,6 +294,7 @@ func decodeObjects(
 	objIter logtailreplay.ObjectsIter,
 	fs fileservice.FileService,
 	mp *mpool.MPool,
+	maxSqlSize uint64,
 ) (res [][]byte, err error) {
 	var objMeta objectio.ObjectMeta
 	var bat *batch.Batch
@@ -329,7 +336,7 @@ func decodeObjects(
 	}
 
 	// init sql buffer
-	insertBuff := make([]byte, 0, MaxSqlSize)
+	insertBuff := make([]byte, 0, maxSqlSize)
 	insertBuff = append(insertBuff, []byte(insertPrefix)...)
 
 	valuesBuff := make([]byte, 0, 1024)
@@ -400,6 +407,7 @@ func decodeDeltas(
 	ts timestamp.Timestamp,
 	deltaIter logtailreplay.BlockDeltaIter,
 	fs fileservice.FileService,
+	maxSqlSize uint64,
 ) (res [][]byte, err error) {
 	tableDef := cdcCtx.TableDef()
 	colName2Index := make(map[string]int)
@@ -415,7 +423,7 @@ func decodeDeltas(
 	timePrefix := fmt.Sprintf("/* decodeDeltas: %v, %v */ ", ts.String(), time.Now())
 	deletePrefix := timePrefix + fmt.Sprintf("DELETE FROM `%s`.`%s` WHERE %s IN (", cdcCtx.Db(), cdcCtx.Table(), primaryKeyStr)
 
-	deleteBuff := make([]byte, 0, MaxSqlSize)
+	deleteBuff := make([]byte, 0, maxSqlSize)
 	deleteBuff = append(deleteBuff, []byte(deletePrefix)...)
 	deleteInBuff := make([]byte, 0, 1024)
 

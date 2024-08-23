@@ -235,7 +235,7 @@ var (
     			state varchar(20),
     			checkpoint bigint unsigned,
     			checkpoint_str varchar(1000),
-    			reserved0 varchar(65535),
+    			concurrency bigint unsigned,
     			reserved1 varchar(65535),
     			reserved2 varchar(65535),
     			reserved3 varchar(65535),

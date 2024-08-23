@@ -388,10 +388,8 @@ func appendFloat64(buf []byte, value float64, bitSize int) []byte {
 	return buf
 }
 
-func openDbConn(
-	user, password string,
-	ip string,
-	port int) (db *sql.DB, err error) {
+func OpenDbConn(ctx context.Context, sinkUri string, concurrency uint64) (db *sql.DB, err error) {
+	user, password, ip, port, err := extractUriInfo(ctx, sinkUri)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?readTimeout=30s&timeout=30s&writeTimeout=30s",
 		user,
 		password,
@@ -409,7 +407,10 @@ func openDbConn(
 		// TODO throw error instead of panic
 		panic(err)
 	}
-
+	if db != nil {
+		db.SetMaxOpenConns(int(concurrency))
+		db.SetMaxIdleConns(int(concurrency))
+	}
 	// TODO check table existence
 	return
 }
@@ -420,8 +421,6 @@ func tryConn(dsn string) (*sql.DB, error) {
 		return nil, err
 	} else {
 		db.SetConnMaxLifetime(time.Minute * 3)
-		db.SetMaxOpenConns(1)
-		db.SetMaxIdleConns(1)
 		time.Sleep(time.Millisecond * 100)
 
 		//ping opens the connection

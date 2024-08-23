@@ -30,7 +30,7 @@ import (
 )
 
 func NewSinker(
-	ctx context.Context,
+	sinkConn *sql.DB,
 	sinkUri string,
 	inputCh chan tools.Pair[*disttae.TableCtx, *DecoderOutput],
 	curWaterMark timestamp.Timestamp,
@@ -40,13 +40,7 @@ func NewSinker(
 	if strings.HasPrefix(strings.ToLower(sinkUri), "console://") {
 		return NewConsoleSinker(inputCh), nil
 	}
-
-	//extract the info from the sink uri
-	userName, pwd, ip, port, err := extractUriInfo(ctx, sinkUri)
-	if err != nil {
-		return nil, err
-	}
-	sink, err := NewMysqlSink(userName, pwd, ip, port)
+	sink, err := NewMysqlSink(sinkConn)
 	if err != nil {
 		return nil, err
 	}
@@ -198,32 +192,23 @@ func (s *mysqlSinker) Run(ctx context.Context, ar *ActiveRoutine) {
 }
 
 type mysqlSink struct {
-	conn           *sql.DB
-	user, password string
-	ip             string
-	port           int
+	conn *sql.DB
 }
 
-func NewMysqlSink(
-	user, password string,
-	ip string, port int) (Sink, error) {
+func NewMysqlSink(sinkConn *sql.DB) (Sink, error) {
 	ret := &mysqlSink{
-		user:     user,
-		password: password,
-		ip:       ip,
-		port:     port,
+		conn: sinkConn,
 	}
-	err := ret.connect()
-	return ret, err
+	return ret, nil
 }
 
-func (s *mysqlSink) connect() (err error) {
-	s.conn, err = openDbConn(s.user, s.password, s.ip, s.port)
-	if err != nil {
-		return err
-	}
-	return err
-}
+//func (s *mysqlSink) connect() (err error) {
+//	s.conn, err = openDbConn(s.user, s.password, s.ip, s.port)
+//	if err != nil {
+//		return err
+//	}
+//	return err
+//}
 
 func (s *mysqlSink) Send(ctx context.Context, data *DecoderOutput) (err error) {
 	sendRows := func(info string, rows [][]byte) (serr error) {
