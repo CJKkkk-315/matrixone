@@ -235,8 +235,6 @@ var (
     			state varchar(20),
     			checkpoint bigint unsigned,
     			checkpoint_str varchar(1000),
-    			full_config varchar(1000),
-    			incr_config varchar(1000),
     			reserved0 varchar(65535),
     			reserved1 varchar(65535),
     			reserved2 varchar(65535),
